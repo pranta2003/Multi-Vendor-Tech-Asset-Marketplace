@@ -1,0 +1,359 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+enum VendorStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+enum OrderStatus {
+  PENDING
+  AWAITING_PAYMENT
+  PAID
+  FULFILLED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+enum PaymentProvider {
+  STRIPE
+  SSLCOMMERZ
+}
+enum Currency {
+  USD
+  BDT
+}
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model User {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email String @unique @db.Citext
+  passwordHash String?
+  fullName String @db.VarChar(120)
+  phone String? @db.VarChar(24)
+  avatarUrl String?
+  role Role @default(CUSTOMER)
+  isEmailVerified Boolean @default(false)
+  emailVerifiedAt DateTime?
+  isActive Boolean @default(true)
+  deletedAt DateTime?
+  credentialsChangedAt DateTime @default(now())
+  vendorProfile VendorProfile?
+  cart Cart?
+  orders Order[]
+  reviews Review[]
+  refreshTokens RefreshToken[]
+  downloads DownloadGrant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model RefreshToken {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  familyId String @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String? @db.VarChar(255)
+  ipAddress String? @db.VarChar(64)
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model VendorProfile {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName String @unique @db.VarChar(80)
+  slug String @unique @db.VarChar(100)
+  bio String? @db.Text
+  websiteUrl String?
+  status VendorStatus @default(PENDING)
+  commissionRateBps Int @default(1500)
+  totalSalesCount Int @default(0)
+  ratingSum Int @default(0)
+  ratingCount Int @default(0)
+  products Product[]
+  payouts Payout[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@map("vendor_profiles")
+}
+
+model Category {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @unique @db.VarChar(60)
+  slug String @unique @db.VarChar(80)
+  parentId String? @db.Uuid
+  parent Category? @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  products Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Product {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId String @db.Uuid
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  categoryId String? @db.Uuid
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  title String @db.VarChar(160)
+  slug String @unique @db.VarChar(200)
+  summary String @db.VarChar(300)
+  description String @db.Text
+  priceUsdCents Int
+  priceBdtPoisha Int
+  thumbnailUrl String
+  galleryUrls String[]
+  stock Int?
+  status ProductStatus @default(DRAFT)
+  downloadCount Int @default(0)
+  ratingSum Int @default(0)
+  ratingCount Int @default(0)
+  publishedAt DateTime?
+  deletedAt DateTime?
+  assets ProductAsset[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  reviews Review[]
+  grants DownloadGrant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([vendorId, status])
+  @@index([categoryId, status])
+  @@map("products")
+}
+
+model ProductAsset {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fileName String @db.VarChar(255)
+  storageKey String @unique
+  mimeType String @db.VarChar(120)
+  sizeBytes BigInt
+  checksum String? @db.VarChar(64)
+  version String @default("1.0.0") @db.VarChar(20)
+  createdAt DateTime @default(now())
+  @@index([productId])
+  @@map("product_assets")
+}
+
+model Cart {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("carts")
+}
+
+model CartItem {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cartId String @db.Uuid
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity Int @default(1)
+  createdAt DateTime @default(now())
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+model Order {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderNumber String @unique @db.VarChar(32)
+  customerId String @db.Uuid
+  customer User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  status OrderStatus @default(PENDING)
+  currency Currency
+  subtotalAmount Int
+  discountAmount Int @default(0)
+  taxAmount Int @default(0)
+  totalAmount Int
+  platformFeeAmount Int @default(0)
+  billingName String @db.VarChar(120)
+  billingEmail String @db.VarChar(255)
+  billingPhone String? @db.VarChar(24)
+  billingCountry String? @db.VarChar(2)
+  paidAt DateTime?
+  fulfilledAt DateTime?
+  cancelledAt DateTime?
+  failureReason String? @db.VarChar(500)
+  items OrderItem[]
+  payments Payment[]
+  grants DownloadGrant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId String @db.Uuid
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  vendorId String @db.Uuid
+  productTitle String @db.VarChar(160)
+  productThumbnail String
+  unitAmount Int
+  quantity Int @default(1)
+  lineTotal Int
+  commissionRateBps Int
+  platformFeeAmount Int
+  vendorEarning Int
+  createdAt DateTime @default(now())
+  @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([vendorId])
+  @@map("order_items")
+}
+
+model Payment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId String @db.Uuid
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider PaymentProvider
+  status PaymentStatus @default(INITIATED)
+  currency Currency
+  amount Int
+  providerRef String? @unique @db.VarChar(255)
+  providerTxnId String? @unique @db.VarChar(64)
+  methodLabel String? @db.VarChar(60)
+  gatewayPayload Json?
+  failureCode String? @db.VarChar(80)
+  failureMessage String? @db.VarChar(500)
+  refundedAmount Int @default(0)
+  authorizedAt DateTime?
+  capturedAt DateTime?
+  failedAt DateTime?
+  events PaymentEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([orderId])
+  @@index([provider, status])
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId String? @db.Uuid
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  provider PaymentProvider
+  externalEventId String @db.VarChar(255)
+  eventType String @db.VarChar(120)
+  @@unique([provider, externalEventId])
+  rawPayload Json
+  processedAt DateTime?
+  errorMessage String? @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  @@index([paymentId])
+  @@index([provider, eventType])
+  @@map("payment_events")
+}
+
+model DownloadGrant {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  orderId String @db.Uuid
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  licenseKey String @unique @db.VarChar(64)
+  downloadCount Int @default(0)
+  maxDownloads Int @default(20)
+  expiresAt DateTime?
+  isRevoked Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([orderId, productId])
+  @@index([userId, productId])
+  @@map("download_grants")
+}
+
+model Review {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating Int
+  comment String? @db.Text
+  isVerifiedPurchase Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, productId])
+  @@index([productId, createdAt(sort: Desc)])
+  @@map("reviews")
+}
+
+model Payout {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId String @db.Uuid
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  currency Currency
+  amount Int
+  status PayoutStatus @default(PENDING)
+  periodStart DateTime
+  periodEnd DateTime
+  reference String? @db.VarChar(120)
+  notes String? @db.VarChar(500)
+  processedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([vendorId, status])
+  @@map("payouts")
+}

@@ -1,0 +1,148 @@
+# ==============================================================================
+# Development stack.
+#
+# This is a STANDALONE file, not an override of docker-compose.yml. Run it with
+# an explicit -f:
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# DEFAULT (no profile): PostgreSQL only, with port 5432 published to the host.
+# You then run the API and the SPA directly on your machine:
+#
+#   cd server && npm run dev      # tsx watch, instant restarts
+#   cd client && npm run dev      # Vite HMR
+#
+# WHY that is the default: Vite's hot module replacement and tsx's watch mode are
+# both noticeably slower and flakier across a Docker bind mount, especially on
+# macOS and Windows where every file event crosses a virtualisation boundary.
+# Running the two Node processes natively keeps the fast feedback loop; the
+# database is the only piece that genuinely benefits from a container.
+#
+# OPTIONAL, fully containerised (useful for "does it work on a clean machine?"):
+#
+#   docker compose -f docker-compose.dev.yml --profile full up --build
+# ==============================================================================
+
+name: tech-asset-marketplace-dev
+
+services:
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-marketplace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+      POSTGRES_DB: ${POSTGRES_DB:-marketplace_db}
+    ports:
+      # Published in development ONLY, so psql, Prisma Studio and your editor's
+      # database client can reach it from the host. The production compose file
+      # deliberately does not do this.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # A DIFFERENT named volume from production, so wiping dev data can never
+      # touch a production volume on the same machine.
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-marketplace} -d ${POSTGRES_DB:-marketplace_db} -q"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [devnet]
+
+  # ----------------------------------------------------------------------------
+  # Everything below is behind the `full` profile, so a plain `up` starts only
+  # the database.
+  # ----------------------------------------------------------------------------
+
+  api:
+    profiles: [full]
+    build:
+      context: ./server
+      # `builder`, not `runner`: development needs devDependencies (tsx, the
+      # Prisma CLI, pino-pretty) which the production stage strips out.
+      target: builder
+    # Migrations are applied here rather than in a separate job. In development
+    # there is only ever one replica, so the race that motivates the dedicated
+    # job in production cannot occur, and one command is less to remember.
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-marketplace}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/${POSTGRES_DB:-marketplace_db}?schema=public
+      CLIENT_ORIGIN: http://localhost:5173
+      SERVER_ORIGIN: http://localhost:5000
+      # Obvious throwaway secrets, long enough to satisfy the 32-char Zod rule.
+      # Real values belong in .env and must never be committed.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_access_secret_change_me_0123456789}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me_0123456789}
+      # false, because development is plain HTTP: a Secure cookie would be
+      # dropped by the browser and every refresh would fail confusingly.
+      COOKIE_SECURE: "false"
+      COOKIE_DOMAIN: localhost
+      COOKIE_SAME_SITE: lax
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_dummy}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_dummy}
+      SSLCZ_STORE_ID: ${SSLCZ_STORE_ID:-teststore}
+      SSLCZ_STORE_PASSWORD: ${SSLCZ_STORE_PASSWORD:-testpass}
+      SSLCZ_IS_LIVE: "false"
+      # Relaxed so that hammering the login form while building a feature does
+      # not lock you out for 15 minutes.
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-1000}
+    volumes:
+      # Bind-mount source for live reload.
+      - ./server/src:/app/src
+      - ./server/prisma:/app/prisma
+      - ./server/scripts:/app/scripts
+      # An anonymous volume masking node_modules. WITHOUT this, the host's
+      # node_modules (or its absence) would shadow the image's, and the native
+      # argon2 binary compiled for Alpine musl inside the image would be replaced
+      # by a host build for glibc/macOS - producing an invalid ELF header crash
+      # that looks like a code bug and is not.
+      - /app/node_modules
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [devnet]
+
+  web:
+    profiles: [full]
+    image: node:20-alpine
+    working_dir: /app
+    # --host is required: by default Vite binds 127.0.0.1, which inside a
+    # container means the container's own loopback and is unreachable from the
+    # host. Binding 0.0.0.0 is what makes the published port work.
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    restart: unless-stopped
+    environment:
+      # Proxy target is the compose service name, not localhost - localhost would
+      # resolve to the web container itself.
+      VITE_DEV_PROXY_TARGET: http://api:5000
+      VITE_API_BASE_URL: /api/v1
+      VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-pk_test_replace_me}
+      # Bind-mounted filesystems often do not deliver inotify events, so Vite
+      # would appear to ignore your edits. Polling is slower but reliable.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks: [devnet]
+
+# ------------------------------------------------------------------------------
+networks:
+  devnet:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local

@@ -1,0 +1,175 @@
+# ==============================================================================
+# Production-shaped stack:  web (nginx + SPA)  ->  api (Express)  ->  postgres
+#
+# Only ONE port is published to the host: the web container. The API and the
+# database are reachable only on the private compose network, so Postgres is not
+# exposed to the internet and the API cannot be called around nginx (which would
+# bypass the rate limits and the X-Forwarded-For handling).
+#
+# The `version:` key is deliberately absent - it is obsolete in Compose v2 and
+# emits a warning if present.
+# ==============================================================================
+
+name: tech-asset-marketplace
+
+services:
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # :ro - the container has no business modifying its own bootstrap script.
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # WHY -U and -d: bare `pg_isready` checks the default `postgres` user/db,
+      # which can report ready before OUR database finishes initialising.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -q"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      # The first boot must create the data directory and run init.sql. Without a
+      # start_period the early failures burn through `retries` and the container
+      # is marked unhealthy before it ever had a chance.
+      start_period: 30s
+    networks: [backend]
+
+  # ----------------------------------------------------------------------------
+  # One-shot migration job.
+  #
+  # WHY a separate service instead of running migrations on API startup:
+  # if the API is ever scaled to more than one replica, every replica would race
+  # to apply the same migration on boot. Prisma takes an advisory lock so it
+  # would not corrupt anything, but the losers block on startup and can trip
+  # their own health checks. A dedicated job runs exactly once, and `api` refuses
+  # to start until it exits 0 - so the API never serves traffic against a schema
+  # it does not expect.
+  migrate:
+    build:
+      context: ./server
+      target: migrator          # the only stage that carries the Prisma CLI
+    restart: "no"               # a job, not a service - do not resurrect it
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: ./server
+      target: runner
+    restart: unless-stopped
+    init: true                  # PID 1 that reaps zombies from any child process
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+
+      # Hostname inside the compose network, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+
+      # Must be the PUBLIC origin the browser uses, because it is echoed in the
+      # CORS allow-list and used to build payment gateway redirect URLs. If this
+      # is wrong, SSLCommerz sends the customer to a dead address after payment.
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:?CLIENT_ORIGIN is required}
+      SERVER_ORIGIN: ${SERVER_ORIGIN:?SERVER_ORIGIN is required}
+
+      # `:?` makes compose abort with a named error if a secret is missing,
+      # instead of starting the container and letting it crash-loop on the Zod
+      # check. Fail at the earliest possible moment, with the clearest message.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required (min 32 chars)}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required (min 32 chars)}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+
+      # src/config/env.ts hard-refuses to boot in production unless this is true.
+      # Behind TLS-terminating nginx or a load balancer this is correct; over
+      # plain HTTP the browser will silently drop the cookie, so serve HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-localhost}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
+
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?STRIPE_WEBHOOK_SECRET is required}
+      STRIPE_CURRENCY: ${STRIPE_CURRENCY:-usd}
+
+      SSLCZ_STORE_ID: ${SSLCZ_STORE_ID:?SSLCZ_STORE_ID is required}
+      SSLCZ_STORE_PASSWORD: ${SSLCZ_STORE_PASSWORD:?SSLCZ_STORE_PASSWORD is required}
+      SSLCZ_IS_LIVE: ${SSLCZ_IS_LIVE:-false}
+      SSLCZ_CURRENCY: ${SSLCZ_CURRENCY:-BDT}
+
+      # Swagger UI is served in production ONLY when this is exactly "true"
+      # (src/config/swagger.ts). The default here is `false` - secure by default,
+      # because public API docs enumerate every endpoint and payload shape for an
+      # attacker. .env.example ships it as true so the portfolio demo is
+      # explorable; turn it off for a real product.
+      ENABLE_SWAGGER_UI: ${ENABLE_SWAGGER_UI:-false}
+
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        # The API starts only after the migration job exits 0. If a migration
+        # fails, the API never starts at all - far safer than serving requests
+        # against a half-migrated schema.
+        condition: service_completed_successfully
+    healthcheck:
+      # Uses Node's global fetch (Node 18+) rather than curl, which is not
+      # installed in the slim runtime image - adding it just for a probe would
+      # enlarge the attack surface. /api/v1/health runs `SELECT 1`, so this
+      # reports unhealthy when the database is unreachable, not merely when the
+      # process is alive.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # No `ports:` - the API is private. Publish it temporarily only to reach
+    # Swagger UI directly while debugging.
+    networks: [backend]
+
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: ./client
+      args:
+        # Build args, NOT environment: Vite inlines these into the bundle at
+        # build time. Changing them requires a rebuild (`--build` / `--no-cache`),
+        # not a restart.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:?VITE_STRIPE_PUBLISHABLE_KEY is required (pk_... only, never a secret key)}
+    restart: unless-stopped
+    ports:
+      # Host 8080 -> container 80. Bind a real TLS terminator in front of this
+      # for a public deployment; nothing here terminates HTTPS.
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        # Waiting for healthy (not just started) means the first page load cannot
+        # land on a 502 from nginx while Express is still connecting to Postgres.
+        condition: service_healthy
+    networks: [backend]
+
+# ------------------------------------------------------------------------------
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    # A named volume, so `docker compose down` does NOT destroy the database.
+    # Use `docker compose down -v` to wipe it deliberately.
+    driver: local

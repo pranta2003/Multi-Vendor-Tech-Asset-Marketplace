@@ -1,0 +1,27 @@
+# Keeping the build context small makes builds faster and - more importantly -
+# prevents local files from leaking into an image layer.
+
+# Never ship real credentials into an image. This is the critical entry: without
+# it, `COPY . .` would bake a developer's .env into a published layer, where it
+# is recoverable by anyone who pulls the image.
+.env
+.env.*
+!.env.example
+
+# Reinstalled by npm ci inside the image. Copying the host's copy would also
+# overwrite native modules (argon2) built for a different libc.
+node_modules
+
+# Rebuilt inside the image; a stale copy could be served by mistake.
+dist
+build
+*.tsbuildinfo
+
+.git
+.gitignore
+*.log
+coverage
+.DS_Store
+Dockerfile
+.dockerignore
+README.md

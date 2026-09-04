@@ -1,0 +1,43 @@
+{
+  "name": "tech-asset-marketplace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-Vendor Tech Asset Marketplace - React + Vite SPA, Express/TypeScript API, PostgreSQL via Prisma, Stripe + SSLCommerz payments.",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "comment:no-workspaces": [
+    "server/ and client/ are INDEPENDENT packages, each with its own",
+    "package-lock.json, and this root manifest deliberately does NOT declare",
+    "npm workspaces.",
+    "",
+    "WHY: workspaces hoist a single node_modules and a single root lockfile. That",
+    "actively hurts the Docker build here, because each Dockerfile copies only its",
+    "own package.json + package-lock.json to get a cache layer that survives source",
+    "changes. With a hoisted root lockfile, every image would need the whole",
+    "monorepo in its build context, and a change to a frontend dependency would",
+    "invalidate the backend's npm ci layer.",
+    "",
+    "Independent locks also mean the API image installs zero frontend packages -",
+    "smaller image, smaller CVE surface. The scripts below give the one-command",
+    "ergonomics of a monorepo without the coupling."
+  ],
+  "scripts": {
+    "install:all": "npm --prefix server ci && npm --prefix client ci",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "typecheck": "npm --prefix server run typecheck && npm --prefix client run typecheck",
+    "prisma:generate": "npm --prefix server exec -- prisma generate",
+    "prisma:migrate": "npm --prefix server exec -- prisma migrate dev",
+    "prisma:deploy": "npm --prefix server exec -- prisma migrate deploy",
+    "prisma:studio": "npm --prefix server exec -- prisma studio",
+    "seed": "npm --prefix server exec -- tsx scripts/seed-test.ts",
+    "validate:openapi": "npm --prefix server exec -- tsx scripts/validate-openapi.ts",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api",
+    "docker:dev": "docker compose -f docker-compose.dev.yml up -d"
+  }
+}
