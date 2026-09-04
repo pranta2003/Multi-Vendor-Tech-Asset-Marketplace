@@ -6,7 +6,23 @@
  * "looks fine" in Swagger UI can therefore be missing half the API, so the only
  * trustworthy check is to assert against the generated document itself.
  */
-import { swaggerSpec } from '../src/config/swagger';
+import type { swaggerSpec as SwaggerSpecType } from '../src/config/swagger';
+
+// Safe mock environment defaults so the OpenAPI document can be validated in
+// isolated environments (e.g. CI) without requiring real secrets or a database.
+process.env.NODE_ENV ||= 'test';
+process.env.CLIENT_ORIGIN ||= 'http://localhost:8080';
+process.env.SERVER_ORIGIN ||= 'http://localhost:8080';
+process.env.DATABASE_URL ||= 'postgresql://marketplace:mock@localhost:5432/marketplace_db?schema=public';
+process.env.JWT_ACCESS_SECRET ||= 'mock_access_secret_min_32_characters_long_val';
+process.env.JWT_REFRESH_SECRET ||= 'mock_refresh_secret_min_32_characters_long_val';
+process.env.STRIPE_SECRET_KEY ||= 'mock_stripe_secret_key';
+process.env.STRIPE_WEBHOOK_SECRET ||= 'mock_stripe_webhook_secret';
+process.env.SSLCZ_STORE_ID ||= 'mock_sslcz_store_id';
+process.env.SSLCZ_STORE_PASSWORD ||= 'mock_sslcz_store_password';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { swaggerSpec } = require('../src/config/swagger') as { swaggerSpec: typeof SwaggerSpecType };
 
 interface Spec {
   openapi: string;

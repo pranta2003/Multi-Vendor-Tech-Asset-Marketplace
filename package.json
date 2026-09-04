@@ -34,7 +34,7 @@
     "prisma:deploy": "npm --prefix server exec -- prisma migrate deploy",
     "prisma:studio": "npm --prefix server exec -- prisma studio",
     "seed": "npm --prefix server exec -- tsx scripts/seed-test.ts",
-    "validate:openapi": "npm --prefix server exec -- tsx scripts/validate-openapi.ts",
+    "validate:openapi": "npm --prefix server run validate:openapi",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f api",
