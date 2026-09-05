@@ -181,6 +181,9 @@ the whole monorepo in its build context, and bumping a *frontend* dependency wou
 packages — a smaller image and a smaller CVE surface. The root `scripts` provide monorepo
 ergonomics without the coupling.
 
+Built to demonstrate senior-level engineering decisions, not just working features. Nearly every
+non-obvious choice in this codebase carries a comment explaining *why*.
+
 ---
 
 ## Environment variables
