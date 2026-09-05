@@ -29,6 +29,8 @@ export const prisma =
     ],
   });
 
+globalForPrisma.prisma = prisma;
+
 /**
  * Errors that are a normal part of a control flow we implement on purpose.
  * They are still logged - at debug - so they remain diagnosable, but they do not
@@ -54,7 +56,6 @@ prisma.$on('warn' as never, (e: { message: string; target?: string }) => {
 });
 
 if (isDevelopment) {
-  globalForPrisma.prisma = prisma;
   prisma.$on('query' as never, (e: { query: string; duration: number }) => {
     if (e.duration > 200) logger.warn({ durationMs: e.duration, query: e.query }, 'Slow query');
   });
