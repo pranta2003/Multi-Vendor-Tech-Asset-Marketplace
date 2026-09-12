@@ -13,6 +13,14 @@ build/
 .env.*
 !.env.example
 !client/.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# --- Vercel CLI ---------------------------------------------------------------
+.vercel/
 
 # --- Logs / runtime -----------------------------------------------------------
 *.log
