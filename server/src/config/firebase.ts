@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp, cert, type App } from 'firebase-admin/app';
-import { getAuth, type Auth, type DecodedIdToken } from 'firebase-admin/auth';
+import type { App } from 'firebase-admin/app';
+import type { Auth, DecodedIdToken } from 'firebase-admin/auth';
 import { env } from './env';
 import { logger } from '../utils/logger';
 
@@ -8,7 +8,7 @@ let firebaseAuth: Auth | null = null;
 
 export const isFirebaseConfigured = (): boolean => Boolean(env.FIREBASE_PROJECT_ID);
 
-export const getFirebaseAdminAuth = (): Auth | null => {
+export const getFirebaseAdminAuth = async (): Promise<Auth | null> => {
   if (!isFirebaseConfigured()) {
     return null;
   }
@@ -18,6 +18,9 @@ export const getFirebaseAdminAuth = (): Auth | null => {
   }
 
   try {
+    const { initializeApp, getApps, getApp, cert } = await import('firebase-admin/app');
+    const { getAuth } = await import('firebase-admin/auth');
+
     if (getApps().length > 0) {
       firebaseApp = getApp();
     } else {
@@ -44,7 +47,7 @@ export const getFirebaseAdminAuth = (): Auth | null => {
 };
 
 export const verifyFirebaseToken = async (idToken: string): Promise<DecodedIdToken> => {
-  const auth = getFirebaseAdminAuth();
+  const auth = await getFirebaseAdminAuth();
   if (!auth) {
     throw new Error(
       'Google authentication is not configured on the server. Set FIREBASE_PROJECT_ID in environment variables.'
