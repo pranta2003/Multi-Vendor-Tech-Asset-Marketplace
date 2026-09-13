@@ -25,24 +25,24 @@ export const OrdersPage = (): JSX.Element => {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">Your orders</h1>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Your orders</h1>
       {error && <Alert tone="error">{error}</Alert>}
       {orders.length === 0 ? (
-        <div className="card p-12 text-center text-slate-600">
+        <div className="card p-12 text-center text-slate-600 dark:text-slate-400">
           You have not placed any orders yet.
         </div>
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
-            <Link key={o.id} to={`/orders/${o.orderNumber}`} className="card flex items-center gap-4 p-4 hover:shadow-md">
+            <Link key={o.id} to={`/orders/${o.orderNumber}`} className="card flex items-center gap-4 p-4 transition-all hover:shadow-md">
               <div className="flex-1">
-                <p className="font-mono text-sm font-semibold text-slate-900">{o.orderNumber}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{o.orderNumber}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {new Date(o.createdAt).toLocaleString()} · {o.items.length} item(s)
                 </p>
               </div>
               <StatusBadge status={o.status} />
-              <div className="w-28 text-right font-semibold">{formatMoney(o.totalAmount, o.currency)}</div>
+              <div className="w-28 text-right font-semibold text-slate-900 dark:text-white">{formatMoney(o.totalAmount, o.currency)}</div>
             </Link>
           ))}
         </div>

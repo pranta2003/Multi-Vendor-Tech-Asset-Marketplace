@@ -5,7 +5,8 @@ import { hashPassword, verifyPassword } from '../../utils/password';
 import { hashToken, newUuid, signAccessToken, signRefreshToken, verifyRefreshToken } from '../../utils/jwt';
 import { logger } from '../../utils/logger';
 import { ConflictError, ForbiddenError, UnauthorizedError } from '../../utils/ApiError';
-import type { ChangePasswordInput, LoginInput, RegisterInput } from './auth.validation';
+import { verifyFirebaseToken } from '../../config/firebase';
+import type { ChangePasswordInput, GoogleAuthInput, LoginInput, RegisterInput } from './auth.validation';
 
 export interface ClientMeta { userAgent?: string; ipAddress?: string; }
 
@@ -93,6 +94,83 @@ export const login = async (input: LoginInput, meta: ClientMeta): Promise<AuthRe
 
   const tokens = await issueTokenPair(user, newUuid(), meta);
   logger.info({ userId: user.id }, 'User logged in');
+  return { user: toPublicUser(user), ...tokens };
+};
+
+export const googleAuth = async (input: GoogleAuthInput, meta: ClientMeta): Promise<AuthResult> => {
+  let decoded;
+  try {
+    decoded = await verifyFirebaseToken(input.idToken);
+  } catch (err) {
+    logger.warn({ err }, 'Google ID token verification failed');
+    throw new UnauthorizedError(err instanceof Error ? err.message : 'Invalid or expired Google token');
+  }
+
+  const email = decoded.email?.trim().toLowerCase();
+  if (!email) {
+    throw new UnauthorizedError('Google account does not have an email address');
+  }
+
+  let user = await prisma.user.findUnique({ where: { email } });
+
+  if (user) {
+    if (!user.isActive || user.deletedAt) {
+      throw new ForbiddenError('This account has been deactivated');
+    }
+
+    const updateData: Prisma.UserUpdateInput = {};
+    if (!user.isEmailVerified && decoded.email_verified) {
+      updateData.isEmailVerified = true;
+      updateData.emailVerifiedAt = new Date();
+    }
+    if (!user.avatarUrl && decoded.picture) {
+      updateData.avatarUrl = decoded.picture;
+    }
+    if (Object.keys(updateData).length > 0) {
+      user = await prisma.user.update({ where: { id: user.id }, data: updateData });
+    }
+  } else {
+    const fullName = decoded.name?.trim() || email.split('@')[0];
+    const role = input.role ?? Role.CUSTOMER;
+
+    user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          fullName,
+          avatarUrl: decoded.picture ?? null,
+          role,
+          isEmailVerified: Boolean(decoded.email_verified),
+          emailVerifiedAt: decoded.email_verified ? new Date() : null,
+          passwordHash: null,
+        },
+      });
+
+      if (role === Role.VENDOR && input.storeName) {
+        const slug = input.storeName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 90);
+        await tx.vendorProfile.create({
+          data: {
+            userId: created.id,
+            storeName: input.storeName,
+            slug: `${slug}-${created.id.slice(0, 6)}`,
+            status: VendorStatus.PENDING,
+          },
+        });
+      }
+
+      await tx.cart.create({ data: { userId: created.id } });
+      return created;
+    });
+
+    logger.info({ userId: user.id, role: user.role, email: user.email }, 'User registered with Google');
+  }
+
+  const tokens = await issueTokenPair(user, newUuid(), meta);
+  logger.info({ userId: user.id }, 'User logged in with Google');
   return { user: toPublicUser(user), ...tokens };
 };
 

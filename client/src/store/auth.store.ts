@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { bootstrapSession, setAccessToken, setSessionExpiredHandler } from '../lib/api';
 import { authApi } from '../lib/services';
+import { signInWithGoogle } from '../lib/firebase';
 import type { PublicUser } from '../lib/types';
 
 interface AuthState {
@@ -20,6 +21,7 @@ interface AuthState {
 
   initialise: () => Promise<void>;
   login: (email: string, password: string) => Promise<PublicUser>;
+  loginWithGoogle: (role?: 'CUSTOMER' | 'VENDOR') => Promise<PublicUser>;
   register: (input: {
     email: string; password: string; fullName: string; role?: 'CUSTOMER' | 'VENDOR';
   }) => Promise<PublicUser>;
@@ -61,6 +63,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       return payload.user;
     } catch (err) {
       set({ loading: false, error: err instanceof Error ? err.message : 'Login failed' });
+      throw err;
+    }
+  },
+
+  loginWithGoogle: async (role) => {
+    set({ loading: true, error: null });
+    try {
+      const { idToken } = await signInWithGoogle();
+      const payload = await authApi.googleLogin(idToken, role);
+      setAccessToken(payload.accessToken);
+      set({ user: payload.user, loading: false });
+      return payload.user;
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Google sign-in failed' });
       throw err;
     }
   },

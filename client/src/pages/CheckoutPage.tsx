@@ -110,7 +110,7 @@ export const CheckoutPage = (): JSX.Element => {
   return (
     <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
       <div>
-        <h1 className="mb-6 text-2xl font-bold text-slate-900">Checkout</h1>
+        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Checkout</h1>
 
         {error && (
           <div className="mb-5">
@@ -127,8 +127,8 @@ export const CheckoutPage = (): JSX.Element => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="card space-y-4 p-6">
-          <h2 className="font-semibold text-slate-900">Billing details</h2>
+        <form onSubmit={handleSubmit} className="card space-y-4 p-6 shadow-sm">
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Billing details</h2>
           <div>
             <label className="label" htmlFor="billingName">Full name</label>
             <input id="billingName" required minLength={2} maxLength={120} className="input"
@@ -138,7 +138,7 @@ export const CheckoutPage = (): JSX.Element => {
             <label className="label" htmlFor="billingEmail">Email</label>
             <input id="billingEmail" type="email" required className="input"
               value={form.billingEmail} onChange={(e) => setForm({ ...form, billingEmail: e.target.value })} />
-            <p className="mt-1 text-xs text-slate-500">Your licence keys are delivered here.</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your licence keys are delivered here.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -160,35 +160,35 @@ export const CheckoutPage = (): JSX.Element => {
               value={form.billingAddress} onChange={(e) => setForm({ ...form, billingAddress: e.target.value })} />
           </div>
 
-          <button type="submit" className="btn-primary w-full" disabled={submitting}>
+          <button type="submit" className="btn-primary w-full py-3 text-base shadow-sm" disabled={submitting}>
             {submitting && <Spinner className="h-4 w-4" />}
             {submitting
-              ? 'Starting secure payment'
+              ? 'Starting secure payment...'
               : `Pay ${formatMoney(cart.subtotalAmount, cart.currency)}`}
           </button>
         </form>
       </div>
 
       <aside className="h-fit lg:sticky lg:top-24">
-        <div className="card p-6">
-          <h2 className="font-semibold text-slate-900">Order summary</h2>
+        <div className="card p-6 shadow-sm">
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Order summary</h2>
           <ul className="mt-4 space-y-3">
             {cart.items.map((l) => (
               <li key={l.itemId} className="flex justify-between gap-3 text-sm">
-                <span className="text-slate-600">{l.title} × {l.quantity}</span>
-                <span className="shrink-0 font-medium">{formatMoney(l.lineTotal, cart.currency)}</span>
+                <span className="text-slate-600 dark:text-slate-300">{l.title} × {l.quantity}</span>
+                <span className="shrink-0 font-medium text-slate-800 dark:text-slate-200">{formatMoney(l.lineTotal, cart.currency)}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex justify-between border-t border-surface-border pt-3 font-bold">
+          <div className="mt-4 flex justify-between border-t border-surface-border pt-4 text-base font-extrabold text-slate-900 dark:border-slate-800 dark:text-white">
             <span>Total</span><span>{formatMoney(cart.subtotalAmount, cart.currency)}</span>
           </div>
-          <div className="mt-4 rounded-lg bg-surface-muted p-3 text-xs text-slate-600">
+          <div className="mt-4 rounded-lg bg-surface-muted p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             Paying with <strong>{provider === 'STRIPE' ? 'Card (Stripe)' : 'SSLCommerz'}</strong>, settled in{' '}
             <strong>{currency}</strong>. Change the currency in the header to switch method.
           </div>
-          <p className="mt-3 text-xs text-slate-500">
-            Card details are entered on the gateway and never touch our servers.
+          <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
+            Payment credentials are entered directly on the gateway and never touch our servers.
           </p>
         </div>
       </aside>

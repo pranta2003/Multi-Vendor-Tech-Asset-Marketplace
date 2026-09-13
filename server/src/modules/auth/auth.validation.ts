@@ -27,6 +27,15 @@ export const changePasswordSchema = z.object({
   body: z.object({ currentPassword: z.string().min(1), newPassword: password }),
 });
 
+export const googleAuthSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1, 'Google ID token is required'),
+    role: z.enum([Role.CUSTOMER, Role.VENDOR]).default(Role.CUSTOMER),
+    storeName: z.string().trim().min(3).max(80).optional(),
+  }),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>['body'];
 export type LoginInput = z.infer<typeof loginSchema>['body'];
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>['body'];
+export type GoogleAuthInput = z.infer<typeof googleAuthSchema>['body'];
