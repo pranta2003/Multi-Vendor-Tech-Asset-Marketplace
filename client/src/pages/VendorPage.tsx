@@ -33,27 +33,27 @@ export const VendorPage = (): JSX.Element => {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-bold text-slate-900">Vendor dashboard</h1>
-      <p className="mb-6 text-sm text-slate-600">
+      <h1 className="mb-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Vendor dashboard</h1>
+      <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
         New and edited products enter review before they can be published.
       </p>
       {error && <Alert tone="error">{error}</Alert>}
 
       {products.length === 0 ? (
-        <div className="card p-12 text-center text-slate-600">You have not created any products yet.</div>
+        <div className="card p-12 text-center text-slate-600 dark:text-slate-400">You have not created any products yet.</div>
       ) : (
-        <div className="card divide-y divide-surface-border">
+        <div className="card divide-y divide-surface-border shadow-sm dark:divide-slate-800">
           {products.map((p) => (
             <div key={p.id} className="flex items-center gap-4 p-4">
-              <img src={p.thumbnailUrl} alt={p.title} className="h-12 w-12 rounded-lg bg-slate-100 object-cover" />
+              <img src={p.thumbnailUrl} alt={p.title} className="h-12 w-12 rounded-lg bg-slate-100 object-cover dark:bg-slate-800" />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-900">{p.title}</p>
-                <p className="text-xs text-slate-500">
+                <p className="truncate font-medium text-slate-900 dark:text-slate-100">{p.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {p.stock === null ? 'Unlimited licences' : `${p.stock} in stock`}
                 </p>
               </div>
               <span className={`badge ${STATUS_STYLE[p.status]}`}>{p.status}</span>
-              <span className="w-24 text-right font-semibold">
+              <span className="w-24 text-right font-semibold text-slate-900 dark:text-white">
                 {formatMoney(currency === 'USD' ? p.priceUsdCents : p.priceBdtPoisha, currency)}
               </span>
             </div>

@@ -3,7 +3,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
 import { authLimiter } from '../../middleware/rateLimiter';
 import * as controller from './auth.controller';
-import { changePasswordSchema, loginSchema, registerSchema } from './auth.validation';
+import { changePasswordSchema, googleAuthSchema, loginSchema, registerSchema } from './auth.validation';
 
 const router = Router();
 
@@ -59,6 +59,22 @@ const router = Router();
  *       properties:
  *         email: { type: string, format: email, example: buyer@example.com }
  *         password: { type: string, example: Str0ngPass }
+ *
+ *     GoogleAuthRequest:
+ *       type: object
+ *       required: [idToken]
+ *       properties:
+ *         idToken:
+ *           type: string
+ *           description: Firebase/Google ID token obtained by the client on Google Sign-In.
+ *         role:
+ *           type: string
+ *           enum: [CUSTOMER, VENDOR]
+ *           default: CUSTOMER
+ *           description: Intended role if the account is being newly registered.
+ *         storeName:
+ *           type: string
+ *           description: Optional vendor store name if registering as a VENDOR.
  *
  *     ChangePasswordRequest:
  *       type: object
@@ -181,6 +197,45 @@ router.post('/register', authLimiter, validate(registerSchema), controller.regis
  *       429: { $ref: '#/components/responses/RateLimited' }
  */
 router.post('/login', authLimiter, validate(loginSchema), controller.login);
+
+/**
+ * @openapi
+ * /auth/google:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Authenticate or register with Google via Firebase ID token
+ *     description: >
+ *       Verifies the client-supplied Google ID token server-side.
+ *       If an account with this email exists, the user is authenticated.
+ *       If no account exists, a new user is provisioned and authenticated.
+ *       Issues a JWT access token in the response body and a rotated HttpOnly
+ *       refresh cookie, identical to password-based sign-in.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/GoogleAuthRequest' }
+ *     responses:
+ *       200:
+ *         description: Authenticated successfully with Google.
+ *         headers:
+ *           Set-Cookie:
+ *             description: Sets the `refresh_token` HttpOnly cookie scoped to `Path=/api/v1/auth`.
+ *             schema: { type: string }
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/AuthResponse' }
+ *       401:
+ *         description: Invalid or expired Google token.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } }
+ *       403:
+ *         description: Account is deactivated.
+ *         content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } }
+ *       422: { $ref: '#/components/responses/ValidationFailed' }
+ *       429: { $ref: '#/components/responses/RateLimited' }
+ */
+router.post('/google', authLimiter, validate(googleAuthSchema), controller.google);
 
 /**
  * @openapi

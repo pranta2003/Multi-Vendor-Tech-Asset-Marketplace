@@ -38,44 +38,37 @@ export const OrderDetailPage = (): JSX.Element => {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/orders" className="text-sm font-medium text-brand-700 hover:underline">← All orders</Link>
-      <div className="card mt-4 p-6">
+      <Link to="/orders" className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">← All orders</Link>
+      <div className="card mt-4 p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-mono text-lg font-bold text-slate-900">{order.orderNumber}</h1>
-            <p className="text-sm text-slate-500">{new Date(order.createdAt).toLocaleString()}</p>
+            <h1 className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100">{order.orderNumber}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{new Date(order.createdAt).toLocaleString()}</p>
           </div>
           <StatusBadge status={order.status} />
         </div>
 
-        <ul className="mt-6 divide-y divide-surface-border">
+        <ul className="mt-6 divide-y divide-surface-border dark:divide-slate-800">
           {order.items.map((item) => (
-            /* productId is unique per order (schema has @@unique([orderId, productId])), so it is a stable key. */
             <li key={item.productId} className="flex items-center gap-4 py-3">
-              <img src={item.productThumbnail} alt={item.productTitle} className="h-14 w-14 rounded-lg bg-slate-100 object-cover" />
+              <img src={item.productThumbnail} alt={item.productTitle} className="h-14 w-14 rounded-lg bg-slate-100 object-cover dark:bg-slate-800" />
               <div className="flex-1">
-                {/*
-                  Rendering the ORDER ITEM SNAPSHOT (title/price captured at
-                  purchase), not the live product. If the vendor later renames
-                  the product or changes its price, this receipt still shows
-                  what was actually bought and paid.
-                */}
-                <p className="font-medium text-slate-900">{item.productTitle}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-medium text-slate-900 dark:text-slate-100">{item.productTitle}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {formatMoney(item.unitAmount, order.currency)} × {item.quantity}
                 </p>
               </div>
-              <span className="font-semibold">{formatMoney(item.lineTotal, order.currency)}</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{formatMoney(item.lineTotal, order.currency)}</span>
             </li>
           ))}
         </ul>
 
-        <div className="mt-4 flex justify-between border-t border-surface-border pt-4 text-lg font-bold">
+        <div className="mt-4 flex justify-between border-t border-surface-border pt-4 text-lg font-bold text-slate-900 dark:border-slate-800 dark:text-white">
           <span>Total</span><span>{formatMoney(order.totalAmount, order.currency)}</span>
         </div>
 
         {order.status === 'FULFILLED' && (
-          <Link to="/library" className="btn-primary mt-6">Open my library</Link>
+          <Link to="/library" className="btn-primary mt-6 inline-flex">Open my library</Link>
         )}
       </div>
     </div>

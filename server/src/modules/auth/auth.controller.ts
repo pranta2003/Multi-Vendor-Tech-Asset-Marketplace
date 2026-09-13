@@ -40,6 +40,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   respondWithAuth(res, result, 'Login successful');
 });
 
+export const google = asyncHandler(async (req: Request, res: Response) => {
+  const result = await authService.googleAuth(req.body, clientMeta(req));
+  respondWithAuth(res, result, 'Google authentication successful');
+});
+
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
   if (!token) throw new UnauthorizedError('Refresh token cookie is missing');

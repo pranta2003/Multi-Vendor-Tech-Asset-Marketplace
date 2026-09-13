@@ -45,6 +45,9 @@ export const authApi = {
 
   logout: (): Promise<void> =>
     api.post<SuccessBody<null>>('/auth/logout').then(() => undefined),
+
+  googleLogin: (idToken: string, role?: 'CUSTOMER' | 'VENDOR'): Promise<AuthPayload> =>
+    api.post<SuccessBody<AuthPayload>>('/auth/google', { idToken, role }).then(unwrap),
 };
 
 export const productApi = {

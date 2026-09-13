@@ -46,6 +46,7 @@ console.log('\n=== 2. Every auth route is documented ===');
 const expected: [string, string][] = [
   ['/auth/register', 'post'],
   ['/auth/login', 'post'],
+  ['/auth/google', 'post'],
   ['/auth/refresh', 'post'],
   ['/auth/logout', 'post'],
   ['/auth/logout-all', 'post'],
@@ -60,7 +61,7 @@ check('no unexpected/typo auth paths', authPaths.length === expected.length,
   `found ${authPaths.length}: ${authPaths.join(', ')}`);
 
 console.log('\n=== 3. Public endpoints opt out of bearer auth ===');
-for (const p of ['/auth/register', '/auth/login', '/auth/logout']) {
+for (const p of ['/auth/register', '/auth/login', '/auth/google', '/auth/logout']) {
   const op = spec.paths[p]?.post as { security?: unknown[] } | undefined;
   check(`${p} declares security: []`, Array.isArray(op?.security) && op.security.length === 0);
 }
@@ -73,7 +74,7 @@ for (const p of ['/auth/me', '/auth/logout-all', '/auth/change-password']) {
 }
 
 console.log('\n=== 4. Request bodies are described, not just mentioned ===');
-for (const [p, m] of [['/auth/register', 'post'], ['/auth/login', 'post'], ['/auth/change-password', 'patch']] as const) {
+for (const [p, m] of [['/auth/register', 'post'], ['/auth/login', 'post'], ['/auth/google', 'post'], ['/auth/change-password', 'patch']] as const) {
   const op = spec.paths[p]?.[m] as { requestBody?: { required?: boolean; content?: Record<string, unknown> } };
   check(`${p} has a required requestBody`, op?.requestBody?.required === true);
   check(`${p} requestBody has an application/json schema`,
@@ -87,6 +88,7 @@ for (const p of ['/auth/refresh', '/auth/logout']) {
 console.log('\n=== 5. Set-Cookie documented where the cookie actually changes ===');
 for (const [p, m, code] of [
   ['/auth/register', 'post', '201'], ['/auth/login', 'post', '200'],
+  ['/auth/google', 'post', '200'],
   ['/auth/refresh', 'post', '200'], ['/auth/logout', 'post', '200'],
   ['/auth/logout-all', 'post', '200'],
 ] as const) {
@@ -99,6 +101,7 @@ console.log('\n=== 6. Error responses declared ===');
 const wants: Record<string, string[]> = {
   '/auth/register|post': ['201', '409', '422', '429'],
   '/auth/login|post': ['200', '401', '403', '422', '429'],
+  '/auth/google|post': ['200', '401', '403', '422', '429'],
   '/auth/refresh|post': ['200', '401', '403', '429'],
   '/auth/logout|post': ['200'],
   '/auth/me|get': ['200', '401'],
