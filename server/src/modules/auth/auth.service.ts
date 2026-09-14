@@ -186,6 +186,9 @@ export const refresh = async (rawToken: string, meta: ClientMeta): Promise<AuthR
   }
 
   if (stored.revokedAt) {
+    if (stored.revokedAt.getTime() === 0) {
+      throw new UnauthorizedError('Session has ended. Please log in again.');
+    }
     const elapsedMs = Date.now() - stored.revokedAt.getTime();
     if (elapsedMs > REFRESH_GRACE_WINDOW_MS) {
       await prisma.refreshToken.updateMany({
@@ -227,13 +230,13 @@ export const refresh = async (rawToken: string, meta: ClientMeta): Promise<AuthR
 export const logout = async (rawToken?: string): Promise<void> => {
   if (!rawToken) return;
   await prisma.refreshToken.updateMany({
-    where: { tokenHash: hashToken(rawToken), revokedAt: null }, data: { revokedAt: new Date() },
+    where: { tokenHash: hashToken(rawToken), revokedAt: null }, data: { revokedAt: new Date(0) },
   });
 };
 
 export const logoutAll = async (userId: string): Promise<number> => {
   const result = await prisma.refreshToken.updateMany({
-    where: { userId, revokedAt: null }, data: { revokedAt: new Date() },
+    where: { userId, revokedAt: null }, data: { revokedAt: new Date(0) },
   });
   return result.count;
 };
@@ -252,7 +255,7 @@ export const changePassword = async (userId: string, input: ChangePasswordInput)
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: userId }, data: { passwordHash, credentialsChangedAt: new Date() } });
-    await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date(0) } });
   });
   logger.info({ userId }, 'Password changed; all sessions revoked');
 };
