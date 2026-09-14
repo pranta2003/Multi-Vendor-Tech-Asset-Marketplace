@@ -35,6 +35,7 @@ const parseDuration = (value: string): number => {
 
 export const REFRESH_TTL_MS = parseDuration(env.JWT_REFRESH_EXPIRES_IN);
 export const ACCESS_TTL_MS = parseDuration(env.JWT_ACCESS_EXPIRES_IN);
+export const REFRESH_GRACE_WINDOW_MS = 30_000;
 
 const issueTokenPair = async (
   user: User, familyId: string, meta: ClientMeta, tx: Prisma.TransactionClient = prisma,
@@ -185,11 +186,22 @@ export const refresh = async (rawToken: string, meta: ClientMeta): Promise<AuthR
   }
 
   if (stored.revokedAt) {
-    await prisma.refreshToken.updateMany({
-      where: { familyId: stored.familyId, revokedAt: null }, data: { revokedAt: new Date() },
-    });
-    logger.error({ userId: stored.userId, familyId: stored.familyId }, 'Refresh token reuse detected - family revoked');
-    throw new UnauthorizedError('Session compromised. Please log in again.');
+    const elapsedMs = Date.now() - stored.revokedAt.getTime();
+    if (elapsedMs > REFRESH_GRACE_WINDOW_MS) {
+      await prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null }, data: { revokedAt: new Date() },
+      });
+      logger.error(
+        { userId: stored.userId, familyId: stored.familyId, elapsedMs },
+        'Refresh token reuse detected outside grace window - family revoked',
+      );
+      throw new UnauthorizedError('Session compromised. Please log in again.');
+    }
+
+    logger.warn(
+      { userId: stored.userId, familyId: stored.familyId, elapsedMs },
+      'Refresh token replayed within grace window - issuing new pair',
+    );
   }
 
   if (stored.expiresAt <= new Date()) throw new UnauthorizedError('Refresh token expired');
@@ -199,7 +211,13 @@ export const refresh = async (rawToken: string, meta: ClientMeta): Promise<AuthR
   if (user.credentialsChangedAt > stored.createdAt) throw new UnauthorizedError('Credentials changed. Please log in again.');
 
   const tokens = await prisma.$transaction(async (tx) => {
-    await tx.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    if (!stored.revokedAt) {
+      await tx.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    }
+    await tx.refreshToken.updateMany({
+      where: { familyId: stored.familyId, revokedAt: null, id: { not: stored.id } },
+      data: { revokedAt: new Date() },
+    });
     return issueTokenPair(user, stored.familyId, meta, tx);
   });
 

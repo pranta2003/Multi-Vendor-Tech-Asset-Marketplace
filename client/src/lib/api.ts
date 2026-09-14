@@ -4,7 +4,12 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import type { ErrorBody, SuccessBody } from './types';
+import type { ErrorBody, SuccessBody, PublicUser, AuthPayload } from './types';
+
+export interface RefreshedSession {
+  accessToken: string;
+  user: PublicUser;
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -96,12 +101,22 @@ export const api: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let bootstrapPromise: Promise<RefreshedSession | null> | null = null;
+let bootstrapCompleted = false;
+
 /** Requests that must never carry an Authorization header or trigger a refresh. */
-const AUTH_FREE_PATHS = ['/auth/login', '/auth/register', '/auth/refresh'];
+const AUTH_FREE_PATHS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/google'];
 const isAuthFreePath = (url: string | undefined): boolean =>
   !!url && AUTH_FREE_PATHS.some((p) => url.startsWith(p));
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  // If the initial silent refresh is in-flight, wait for it to settle before sending
+  // authenticated requests so they do not fire without a token and trigger
+  // avoidable 401s. Auth-free endpoints (login, register, google) never wait.
+  if (!bootstrapCompleted && bootstrapPromise && !isAuthFreePath(config.url)) {
+    await bootstrapPromise;
+  }
+
   if (accessToken && !isAuthFreePath(config.url)) {
     config.headers.set('Authorization', `Bearer ${accessToken}`);
     // Record which token generation went out, so a 401 that arrives after a
@@ -130,22 +145,25 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
  * So: the FIRST 401 starts a refresh and every subsequent 401 awaits that same
  * promise, then replays with the new token.
  */
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<RefreshedSession> | null = null;
 
-const performRefresh = async (): Promise<string> => {
+const performRefresh = async (): Promise<RefreshedSession> => {
   // Bare axios, not `api`: using the instance would recurse through this very
   // interceptor if the refresh call itself returned 401.
-  const { data } = await axios.post<SuccessBody<{ accessToken: string; expiresIn: number }>>(
+  const { data } = await axios.post<SuccessBody<AuthPayload>>(
     `${API_BASE_URL}/auth/refresh`,
     {},
     { withCredentials: true, timeout: 20_000 },
   );
-  const token = data.data.accessToken;
-  setAccessToken(token);
-  return token;
+  const session: RefreshedSession = {
+    accessToken: data.data.accessToken,
+    user: data.data.user,
+  };
+  setAccessToken(session.accessToken);
+  return session;
 };
 
-const refreshAccessToken = (): Promise<string> => {
+const refreshAccessToken = (): Promise<RefreshedSession> => {
   refreshPromise ??= performRefresh().finally(() => {
     // Cleared in `finally` so a FAILED refresh does not poison later attempts
     // with a permanently rejected promise.
@@ -250,7 +268,8 @@ api.interceptors.response.use(
        */
       let token: string;
       try {
-        token = await refreshAccessToken();
+        const session = await refreshAccessToken();
+        token = session.accessToken;
       } catch {
         // The refresh token is gone, expired, or was revoked by reuse
         // detection. This is a real logout.
@@ -304,11 +323,17 @@ export const unwrapPaged = <T>(
  * "this visitor is simply not logged in" is the normal case for a public
  * marketplace and must not surface as an error to the user.
  */
-export const bootstrapSession = async (): Promise<string | null> => {
-  try {
-    return await refreshAccessToken();
-  } catch {
-    setAccessToken(null);
-    return null;
-  }
+export const bootstrapSession = async (): Promise<RefreshedSession | null> => {
+  if (bootstrapPromise) return bootstrapPromise;
+  bootstrapPromise = (async () => {
+    try {
+      return await refreshAccessToken();
+    } catch {
+      setAccessToken(null);
+      return null;
+    } finally {
+      bootstrapCompleted = true;
+    }
+  })();
+  return bootstrapPromise;
 };
