@@ -57,6 +57,7 @@ export const productApi = {
     q?: string;
     sort?: string;
     vendorSlug?: string;
+    categorySlug?: string;
   }): Promise<{ items: ProductListItem[]; meta: PaginationMeta | undefined }> =>
     api.get<SuccessBody<ProductListItem[]>>('/products', { params }).then((r) => {
       const { data, meta } = unwrapPaged(r);

@@ -33,21 +33,13 @@ export const CatalogPage = (): JSX.Element => {
       productApi
         .list({
           q: query.trim() || undefined,
+          categorySlug: selectedCategory || undefined,
           sort,
           limit: 18,
         })
         .then((res) => {
           if (!cancelled) {
-            let filtered = res.items;
-            if (selectedCategory) {
-              filtered = filtered.filter(
-                (item) =>
-                  item.category?.slug === selectedCategory ||
-                  item.summary.toLowerCase().includes(selectedCategory) ||
-                  item.title.toLowerCase().includes(selectedCategory)
-              );
-            }
-            setItems(filtered);
+            setItems(res.items);
             setError(null);
           }
         })
