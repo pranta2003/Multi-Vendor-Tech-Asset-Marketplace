@@ -29,6 +29,8 @@ interface AuthState {
   clearError: () => void;
 }
 
+let initialisePromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   initialising: true,
@@ -36,22 +38,32 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
 
   initialise: async () => {
-    // Registered here so the api layer can drop our state when a refresh fails,
-    // without the api module importing the store (which would be circular).
-    setSessionExpiredHandler(() => set({ user: null }));
+    if (initialisePromise) return initialisePromise;
 
-    const token = await bootstrapSession();
-    if (!token) {
-      set({ user: null, initialising: false });
-      return;
-    }
-    try {
-      const user = await authApi.me();
-      set({ user, initialising: false });
-    } catch {
-      setAccessToken(null);
-      set({ user: null, initialising: false });
-    }
+    initialisePromise = (async () => {
+      // Registered here so the api layer can drop our state when a refresh fails,
+      // without the api module importing the store (which would be circular).
+      setSessionExpiredHandler(() => {
+        initialisePromise = null;
+        set({ user: null });
+      });
+
+      try {
+        const session = await bootstrapSession();
+        if (!session) {
+          set({ user: null, initialising: false });
+          return;
+        }
+        // Direct assignment from the refresh response payload: eliminates
+        // the redundant secondary GET /auth/me network request on cold start.
+        set({ user: session.user, initialising: false });
+      } catch {
+        setAccessToken(null);
+        set({ user: null, initialising: false });
+      }
+    })();
+
+    return initialisePromise;
   },
 
   login: async (email, password) => {
@@ -102,6 +114,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authApi.logout();
     } finally {
       setAccessToken(null);
+      initialisePromise = null;
       set({ user: null });
     }
   },
