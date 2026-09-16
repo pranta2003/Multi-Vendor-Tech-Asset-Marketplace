@@ -184,8 +184,18 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
 const toApiError = (error: AxiosError<ErrorBody>): ApiClientError => {
   if (error.response) {
     const body = error.response.data;
+    let message = body?.message ?? 'Request failed';
+    if (Array.isArray(body?.details) && body.details.length > 0) {
+      const detailMsg = body.details
+        .map((d: any) => (typeof d === 'string' ? d : d?.message))
+        .filter(Boolean)
+        .join('. ');
+      if (detailMsg) {
+        message = detailMsg;
+      }
+    }
     return new ApiClientError(
-      body?.message ?? 'Request failed',
+      message,
       error.response.status,
       body?.code ?? 'UNKNOWN',
       body?.requestId,
