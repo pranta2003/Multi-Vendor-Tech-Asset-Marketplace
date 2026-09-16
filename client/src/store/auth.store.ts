@@ -21,9 +21,9 @@ interface AuthState {
 
   initialise: () => Promise<void>;
   login: (email: string, password: string) => Promise<PublicUser>;
-  loginWithGoogle: (role?: 'CUSTOMER' | 'VENDOR') => Promise<PublicUser>;
+  loginWithGoogle: (role?: 'CUSTOMER' | 'VENDOR', storeName?: string) => Promise<PublicUser>;
   register: (input: {
-    email: string; password: string; fullName: string; role?: 'CUSTOMER' | 'VENDOR';
+    email: string; password: string; fullName: string; role?: 'CUSTOMER' | 'VENDOR'; storeName?: string;
   }) => Promise<PublicUser>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -79,11 +79,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  loginWithGoogle: async (role) => {
+  loginWithGoogle: async (role, storeName) => {
     set({ loading: true, error: null });
     try {
       const { idToken } = await signInWithGoogle();
-      const payload = await authApi.googleLogin(idToken, role);
+      const payload = await authApi.googleLogin(idToken, role, storeName);
       setAccessToken(payload.accessToken);
       set({ user: payload.user, loading: false });
       return payload.user;

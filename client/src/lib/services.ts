@@ -37,6 +37,7 @@ export const authApi = {
     password: string;
     fullName: string;
     role?: 'CUSTOMER' | 'VENDOR';
+    storeName?: string;
   }): Promise<AuthPayload> =>
     api.post<SuccessBody<AuthPayload>>('/auth/register', input).then(unwrap),
 
@@ -46,8 +47,8 @@ export const authApi = {
   logout: (): Promise<void> =>
     api.post<SuccessBody<null>>('/auth/logout').then(() => undefined),
 
-  googleLogin: (idToken: string, role?: 'CUSTOMER' | 'VENDOR'): Promise<AuthPayload> =>
-    api.post<SuccessBody<AuthPayload>>('/auth/google', { idToken, role }).then(unwrap),
+  googleLogin: (idToken: string, role?: 'CUSTOMER' | 'VENDOR', storeName?: string): Promise<AuthPayload> =>
+    api.post<SuccessBody<AuthPayload>>('/auth/google', { idToken, role, storeName }).then(unwrap),
 };
 
 export const productApi = {

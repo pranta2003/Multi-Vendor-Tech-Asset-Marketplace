@@ -21,20 +21,25 @@ export const getFirebaseAdminAuth = async (): Promise<Auth | null> => {
     const { initializeApp, getApps, getApp, cert } = await import('firebase-admin/app');
     const { getAuth } = await import('firebase-admin/auth');
 
+    const effectiveProjectId =
+      env.FIREBASE_PROJECT_ID && env.FIREBASE_PROJECT_ID !== 'ENABLE_SWAGGER_UI'
+        ? env.FIREBASE_PROJECT_ID
+        : 'tech-asset-marketplace';
+
     if (getApps().length > 0) {
       firebaseApp = getApp();
     } else {
       if (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY) {
         firebaseApp = initializeApp({
           credential: cert({
-            projectId: env.FIREBASE_PROJECT_ID,
+            projectId: effectiveProjectId,
             clientEmail: env.FIREBASE_CLIENT_EMAIL,
             privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
           }),
         });
       } else {
         firebaseApp = initializeApp({
-          projectId: env.FIREBASE_PROJECT_ID,
+          projectId: effectiveProjectId,
         });
       }
     }

@@ -12,16 +12,63 @@ export const RegisterPage = (): JSX.Element => {
     email: '',
     password: '',
     role: 'CUSTOMER' as 'CUSTOMER' | 'VENDOR',
+    storeName: '',
   });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const hasMinLength = form.password.length >= 8;
+  const hasLowercase = /[a-z]/.test(form.password);
+  const hasUppercase = /[A-Z]/.test(form.password);
+  const hasDigit = /[0-9]/.test(form.password);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     clearError();
     setLocalError(null);
+
+    const trimmedName = form.fullName.trim();
+    if (trimmedName.length < 2) {
+      setLocalError('Full name must be at least 2 characters.');
+      return;
+    }
+
+    const trimmedEmail = form.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setLocalError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!hasMinLength) {
+      setLocalError('Password must contain at least 8 characters.');
+      return;
+    }
+    if (!hasLowercase) {
+      setLocalError('Password must contain at least one lowercase letter.');
+      return;
+    }
+    if (!hasUppercase) {
+      setLocalError('Password must contain at least one uppercase letter.');
+      return;
+    }
+    if (!hasDigit) {
+      setLocalError('Password must contain at least one number.');
+      return;
+    }
+
+    if (form.role === 'VENDOR' && form.storeName.trim().length < 3) {
+      setLocalError('Store name must be at least 3 characters when registering as a vendor.');
+      return;
+    }
+
     try {
-      await register(form);
+      await register({
+        fullName: trimmedName,
+        email: trimmedEmail,
+        password: form.password,
+        role: form.role,
+        storeName: form.role === 'VENDOR' ? form.storeName.trim() : undefined,
+      });
       navigate('/', { replace: true });
     } catch {
       /* store holds the message */
@@ -31,9 +78,16 @@ export const RegisterPage = (): JSX.Element => {
   const handleGoogleSignUp = async (): Promise<void> => {
     clearError();
     setLocalError(null);
+    if (form.role === 'VENDOR' && form.storeName.trim().length < 3) {
+      setLocalError('Please enter a store name (at least 3 characters) to register as a vendor.');
+      return;
+    }
     setGoogleLoading(true);
     try {
-      await loginWithGoogle(form.role);
+      await loginWithGoogle(
+        form.role,
+        form.role === 'VENDOR' ? form.storeName.trim() : undefined,
+      );
       navigate('/', { replace: true });
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Google sign-up failed');
@@ -147,9 +201,23 @@ export const RegisterPage = (): JSX.Element => {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="At least 8 characters"
             />
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Must include at least 8 characters, with uppercase, lowercase, and a digit.
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Password requirements:</p>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <span className={hasMinLength ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>
+                  {hasMinLength ? '✓' : '•'} 8+ characters
+                </span>
+                <span className={hasUppercase ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>
+                  {hasUppercase ? '✓' : '•'} One uppercase letter
+                </span>
+                <span className={hasLowercase ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>
+                  {hasLowercase ? '✓' : '•'} One lowercase letter
+                </span>
+                <span className={hasDigit ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>
+                  {hasDigit ? '✓' : '•'} One number
+                </span>
+              </div>
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="role">
@@ -170,6 +238,23 @@ export const RegisterPage = (): JSX.Element => {
               </p>
             )}
           </div>
+          {form.role === 'VENDOR' && (
+            <div>
+              <label className="label" htmlFor="storeName">
+                Store name
+              </label>
+              <input
+                id="storeName"
+                required
+                minLength={3}
+                maxLength={80}
+                className="input"
+                value={form.storeName}
+                onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+                placeholder="e.g. PixelForge Studios"
+              />
+            </div>
+          )}
           <button type="submit" className="btn-primary w-full" disabled={loading || googleLoading}>
             {loading && <Spinner className="h-4 w-4" />}
             {loading ? 'Creating account...' : 'Create account'}

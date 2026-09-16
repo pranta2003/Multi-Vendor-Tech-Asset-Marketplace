@@ -3,9 +3,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from 'firebas
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'tech-asset-marketplace.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tech-asset-marketplace',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'tech-asset-marketplace.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };

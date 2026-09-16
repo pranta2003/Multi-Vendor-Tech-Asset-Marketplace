@@ -13,10 +13,13 @@ export const validate =
       next();
     } catch (err) {
       if (err instanceof ZodError) {
-        next(new ValidationError('Request validation failed', err.issues.map((i) => ({
+        const details = err.issues.map((i) => ({
           field: i.path.slice(1).join('.') || i.path.join('.'),
-          message: i.message, code: i.code,
-        }))));
+          message: i.message,
+          code: i.code,
+        }));
+        const summary = details.map((d) => d.message).filter(Boolean).join('. ');
+        next(new ValidationError(summary || 'Request validation failed', details));
         return;
       }
       next(err);
