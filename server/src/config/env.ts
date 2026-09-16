@@ -26,7 +26,7 @@ const envSchema = z.object({
   SSLCZ_IS_LIVE: z.string().default('false').transform((v) => v === 'true'),
   SSLCZ_CURRENCY: z.string().length(3).default('BDT'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100).transform((val) => Math.max(val, 100)),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   FIREBASE_PROJECT_ID: z
     .string()
