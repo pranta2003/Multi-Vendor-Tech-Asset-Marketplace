@@ -399,6 +399,181 @@ export const handleSslczIpn = async (body: Record<string, string>): Promise<Webh
   }
 };
 
+/* ------------------------------------------- sslcommerz browser callbacks */
+
+export interface SslczRedirectOutcome {
+  orderNumber?: string;
+  tranId?: string;
+  fulfilled: boolean;
+}
+
+/**
+ * Handles the browser return from SSLCommerz.
+ *
+ * Rather than merely bouncing the user without verification, we perform
+ * authoritative server-to-server validation using the val_id sent in the POST
+ * body before redirecting to the frontend. If an IPN arrives first, claimEvent
+ * and fulfillOrder idempotency cleanly handle the race.
+ */
+export const handleSslczSuccessCallback = async (
+  body: Record<string, string>,
+): Promise<SslczRedirectOutcome> => {
+  const tranId = body.tran_id;
+  const valId = body.val_id;
+
+  if (!tranId) {
+    logger.warn('SSLCommerz success redirect received without tran_id');
+    return { fulfilled: false };
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { providerTxnId: tranId },
+    include: { order: true },
+  });
+
+  if (!payment) {
+    logger.warn({ tranId }, 'SSLCommerz success redirect for unknown transaction');
+    return { tranId, fulfilled: false };
+  }
+
+  const orderNumber = payment.order.orderNumber;
+
+  if (
+    payment.order.status === OrderStatus.FULFILLED ||
+    payment.order.status === OrderStatus.PAID
+  ) {
+    return { orderNumber, tranId, fulfilled: true };
+  }
+
+  if (
+    payment.order.status !== OrderStatus.AWAITING_PAYMENT &&
+    payment.order.status !== OrderStatus.PENDING
+  ) {
+    return { orderNumber, tranId, fulfilled: false };
+  }
+
+  if (!valId) {
+    logger.warn({ tranId }, 'SSLCommerz success redirect missing val_id; waiting for IPN');
+    return { orderNumber, tranId, fulfilled: false };
+  }
+
+  const eventId = await claimEvent(
+    PaymentProvider.SSLCOMMERZ,
+    valId,
+    'redirect.success',
+    body as unknown as Prisma.InputJsonValue,
+    payment.id,
+  );
+
+  try {
+    const validation = await validateSslczTransaction(valId);
+
+    if (!isSslczValidationSuccessful(validation.status)) {
+      logger.warn(
+        { tranId, valId, status: validation.status },
+        'SSLCommerz validation failed during browser redirect',
+      );
+      await failOrder(payment.orderId, payment.id, {
+        code: validation.status,
+        message: `SSLCommerz validation returned ${validation.status}`,
+        gatewayPayload: validation.raw as Prisma.InputJsonValue,
+      });
+      if (eventId) await markEventProcessed(eventId, `validation status ${validation.status}`);
+      return { orderNumber, tranId, fulfilled: false };
+    }
+
+    if (validation.tranId !== tranId) {
+      logger.error(
+        { tranId, validationTranId: validation.tranId },
+        'tran_id mismatch during browser redirect validation',
+      );
+      if (eventId) await markEventProcessed(eventId, 'tran_id mismatch against validation');
+      throw new PaymentError('Validated transaction does not match the notified transaction');
+    }
+
+    assertAmountMatches(
+      payment.order,
+      majorStringToMinor(String(validation.raw.amount ?? '0'), payment.order.currency),
+      validation.currency,
+    );
+
+    if (validation.riskLevel === '1') {
+      logger.warn(
+        { tranId, valId, riskLevel: validation.riskLevel },
+        'SSLCommerz transaction flagged with risk',
+      );
+    }
+
+    const outcome = await fulfillOrder(payment.orderId, {
+      paymentId: payment.id,
+      providerRef: validation.valId,
+      methodLabel: validation.cardType ?? 'sslcommerz',
+      gatewayPayload: validation.raw as Prisma.InputJsonValue,
+    });
+
+    if (eventId) await markEventProcessed(eventId);
+    return { orderNumber, tranId, fulfilled: outcome.fulfilled };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error validating SSLCommerz redirect';
+    logger.error({ err, tranId, valId }, message);
+    if (eventId) await markEventProcessed(eventId, message);
+    // Still return orderNumber so the frontend can poll and wait for IPN reconciliation
+    return { orderNumber, tranId, fulfilled: false };
+  }
+};
+
+export const handleSslczFailureCallback = async (
+  body: Record<string, string>,
+): Promise<{ orderNumber?: string; tranId?: string }> => {
+  const tranId = body.tran_id;
+  if (!tranId) return {};
+
+  const payment = await prisma.payment.findUnique({
+    where: { providerTxnId: tranId },
+    include: { order: true },
+  });
+  if (!payment) return { tranId };
+
+  if (
+    payment.order.status === OrderStatus.AWAITING_PAYMENT ||
+    payment.order.status === OrderStatus.PENDING
+  ) {
+    await failOrder(payment.orderId, payment.id, {
+      code: body.status ?? 'FAILED',
+      message: body.error ?? 'Customer payment failed at gateway',
+      gatewayPayload: body as unknown as Prisma.InputJsonValue,
+    });
+  }
+
+  return { orderNumber: payment.order.orderNumber, tranId };
+};
+
+export const handleSslczCancelCallback = async (
+  body: Record<string, string>,
+): Promise<{ orderNumber?: string; tranId?: string }> => {
+  const tranId = body.tran_id;
+  if (!tranId) return {};
+
+  const payment = await prisma.payment.findUnique({
+    where: { providerTxnId: tranId },
+    include: { order: true },
+  });
+  if (!payment) return { tranId };
+
+  if (
+    payment.order.status === OrderStatus.AWAITING_PAYMENT ||
+    payment.order.status === OrderStatus.PENDING
+  ) {
+    await failOrder(payment.orderId, payment.id, {
+      code: 'CANCELLED',
+      message: 'Payment cancelled by customer at gateway',
+      gatewayPayload: body as unknown as Prisma.InputJsonValue,
+    });
+  }
+
+  return { orderNumber: payment.order.orderNumber, tranId };
+};
+
 /* ------------------------------------------------------------------- queries */
 
 export const getPaymentStatusForOrder = async (
@@ -406,9 +581,13 @@ export const getPaymentStatusForOrder = async (
   orderNumber: string,
 ): Promise<{ orderNumber: string; orderStatus: OrderStatus; paymentStatus: PaymentStatus | null }> => {
   const order = await prisma.order.findFirst({
-    // customerId in the WHERE clause, not checked afterwards - an IDOR is
-    // impossible if the ownership predicate is part of the query itself.
-    where: { orderNumber, customerId: userId },
+    where: {
+      customerId: userId,
+      OR: [
+        { orderNumber },
+        { payments: { some: { providerTxnId: orderNumber } } },
+      ],
+    },
     include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
   });
   if (!order) throw new NotFoundError('Order');

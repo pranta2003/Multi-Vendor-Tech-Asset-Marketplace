@@ -79,34 +79,59 @@ export const sslczIpn = async (req: Request, res: Response): Promise<void> => {
 /**
  * Browser redirect targets.
  *
- * WHY these do not fulfil anything:
- * SSLCommerz POSTs the customer's *browser* to success_url. Anyone can craft
- * that request by hand - it carries no authentication and no signature we can
- * fully trust. Treating it as proof of payment is the single most common
- * SSLCommerz integration vulnerability. So these handlers only bounce the user
- * back to the SPA; the money question is settled asynchronously by the IPN.
- *
- * The frontend then polls GET /payments/:orderNumber/status, which reads the
- * order state that the IPN wrote.
+ * We validate the transaction server-to-server with SSLCommerz using the val_id
+ * returned in the callback before redirecting the customer back to the SPA.
+ * Both the orderNumber and tran_id are passed in query params so the frontend
+ * order poller and status pages can identify the order immediately.
  */
-const redirectToClient = (res: Response, path: string, tranId?: string): void => {
+const redirectToClient = (res: Response, path: string, orderNumber?: string, tranId?: string): void => {
   const url = new URL(path, env.CLIENT_ORIGIN);
+  if (orderNumber) url.searchParams.set('order', orderNumber);
   if (tranId) url.searchParams.set('tran_id', tranId);
   res.redirect(303, url.toString());
 };
 
-export const sslczSuccessRedirect = (req: Request, res: Response): void => {
-  const tranId = (req.body as Record<string, string> | undefined)?.tran_id;
-  logger.info({ tranId }, 'SSLCommerz browser redirect: success (informational only)');
-  redirectToClient(res, '/checkout/processing', tranId);
+export const sslczSuccessRedirect = async (req: Request, res: Response): Promise<void> => {
+  const payload = { ...req.query, ...req.body } as Record<string, string>;
+  const tranId = payload.tran_id;
+  logger.info({ tranId }, 'SSLCommerz browser redirect: success received');
+  const result = await paymentService.handleSslczSuccessCallback(payload);
+  redirectToClient(res, '/checkout/processing', result.orderNumber, result.tranId ?? tranId);
 };
 
-export const sslczFailRedirect = (req: Request, res: Response): void => {
-  const tranId = (req.body as Record<string, string> | undefined)?.tran_id;
-  redirectToClient(res, '/checkout/failed', tranId);
+export const sslczFailRedirect = async (req: Request, res: Response): Promise<void> => {
+  const payload = { ...req.query, ...req.body } as Record<string, string>;
+  const tranId = payload.tran_id;
+  logger.info({ tranId }, 'SSLCommerz browser redirect: fail received');
+  const result = await paymentService.handleSslczFailureCallback(payload);
+  redirectToClient(res, '/checkout/failed', result.orderNumber, result.tranId ?? tranId);
 };
 
-export const sslczCancelRedirect = (req: Request, res: Response): void => {
-  const tranId = (req.body as Record<string, string> | undefined)?.tran_id;
-  redirectToClient(res, '/checkout/cancelled', tranId);
+export const sslczCancelRedirect = async (req: Request, res: Response): Promise<void> => {
+  const payload = { ...req.query, ...req.body } as Record<string, string>;
+  const tranId = payload.tran_id;
+  logger.info({ tranId }, 'SSLCommerz browser redirect: cancel received');
+  const result = await paymentService.handleSslczCancelCallback(payload);
+  redirectToClient(res, '/checkout/cancelled', result.orderNumber, result.tranId ?? tranId);
+};
+
+/**
+ * Public payment configuration.
+ *
+ * Exposes safe, unauthenticated client configuration (e.g. Stripe publishable key
+ * and sandbox flags) so the SPA can dynamically obtain gateway settings without
+ * requiring frontend-rebuilds on variable changes.
+ */
+export const publicConfig = (_req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    data: {
+      stripePublishableKey:
+        process.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+        process.env.STRIPE_PUBLISHABLE_KEY ||
+        '',
+      currency: env.STRIPE_CURRENCY,
+      sslczIsLive: env.SSLCZ_IS_LIVE,
+    },
+  });
 };

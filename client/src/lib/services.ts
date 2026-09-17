@@ -129,4 +129,9 @@ export const paymentApi = {
     api
       .get<SuccessBody<PaymentStatusView>>(`/payments/${encodeURIComponent(orderNumber)}/status`)
       .then(unwrap),
+
+  config: (): Promise<{ stripePublishableKey?: string; currency?: string; sslczIsLive?: boolean }> =>
+    api
+      .get<SuccessBody<{ stripePublishableKey?: string; currency?: string; sslczIsLive?: boolean }>>('/payments/config')
+      .then(unwrap),
 };

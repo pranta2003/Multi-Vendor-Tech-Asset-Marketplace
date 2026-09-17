@@ -10,7 +10,7 @@ interface Props { variant: 'failed' | 'cancelled' }
  */
 export const CheckoutResultPage = ({ variant }: Props): JSX.Element => {
   const [params] = useSearchParams();
-  const orderNumber = params.get('order');
+  const orderNumber = params.get('order') ?? params.get('tran_id') ?? undefined;
 
   const copy = variant === 'cancelled'
     ? {
@@ -24,14 +24,14 @@ export const CheckoutResultPage = ({ variant }: Props): JSX.Element => {
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="card p-10 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-          <svg className="h-7 w-7 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+      <div className="card p-10 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800/60">
+          <svg className="h-7 w-7 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
           </svg>
         </div>
-        <h1 className="mt-5 text-xl font-bold text-slate-900">{copy.title}</h1>
-        <p className="mt-2 text-sm text-slate-600">{copy.body}</p>
+        <h1 className="mt-5 text-xl font-bold text-slate-900 dark:text-slate-100">{copy.title}</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{copy.body}</p>
         <div className="mt-6 flex justify-center gap-3">
           <Link to="/cart" className="btn-primary">Back to cart</Link>
           {orderNumber && <Link to={`/orders/${orderNumber}`} className="btn-secondary">View order</Link>}
