@@ -48,22 +48,34 @@ router.post('/sslcommerz/ipn', asyncHandler(controller.sslczIpn));
 
 /**
  * @openapi
+ * /payments/config:
+ *   get:
+ *     tags: [Payments]
+ *     summary: Public client payment configuration
+ *     security: []
+ *     responses:
+ *       200: { description: Public payment configuration }
+ */
+router.get('/config', controller.publicConfig);
+
+/**
+ * @openapi
  * /payments/sslcommerz/success:
  *   post:
  *     tags: [Payments]
- *     summary: Browser redirect target - informational only, never fulfils
+ *     summary: Browser redirect target with server-side validation
  *     security: []
  *     responses:
  *       303: { description: Redirects to the SPA }
  */
-router.post('/sslcommerz/success', controller.sslczSuccessRedirect);
-router.post('/sslcommerz/fail', controller.sslczFailRedirect);
-router.post('/sslcommerz/cancel', controller.sslczCancelRedirect);
+router.post('/sslcommerz/success', asyncHandler(controller.sslczSuccessRedirect));
+router.post('/sslcommerz/fail', asyncHandler(controller.sslczFailRedirect));
+router.post('/sslcommerz/cancel', asyncHandler(controller.sslczCancelRedirect));
 // SSLCommerz POSTs by default but has been observed to GET on some cancel
 // flows, so both verbs are accepted rather than returning a confusing 404.
-router.get('/sslcommerz/success', controller.sslczSuccessRedirect);
-router.get('/sslcommerz/fail', controller.sslczFailRedirect);
-router.get('/sslcommerz/cancel', controller.sslczCancelRedirect);
+router.get('/sslcommerz/success', asyncHandler(controller.sslczSuccessRedirect));
+router.get('/sslcommerz/fail', asyncHandler(controller.sslczFailRedirect));
+router.get('/sslcommerz/cancel', asyncHandler(controller.sslczCancelRedirect));
 
 /**
  * @openapi

@@ -245,7 +245,7 @@ export const CatalogPage = (): JSX.Element => {
                       </span>
                     </div>
 
-                    <span className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white dark:bg-brand-950/60 dark:text-brand-300 dark:group-hover:bg-brand-500 dark:group-hover:text-white">
+                    <span className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 border border-brand-200/70 transition-colors group-hover:bg-brand-600 group-hover:text-white group-hover:border-transparent dark:bg-brand-950/80 dark:text-brand-300 dark:border-brand-800/80 dark:group-hover:bg-brand-600 dark:group-hover:text-white dark:group-hover:border-transparent">
                       View details →
                     </span>
                   </div>

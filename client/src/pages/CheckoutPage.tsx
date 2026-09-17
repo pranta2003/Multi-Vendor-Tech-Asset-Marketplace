@@ -21,9 +21,9 @@ export const CheckoutPage = (): JSX.Element => {
   const [form, setForm] = useState({
     billingName: user?.fullName ?? '',
     billingEmail: user?.email ?? '',
-    billingPhone: '',
-    billingAddress: '',
-    billingCity: '',
+    billingPhone: '01711000000',
+    billingAddress: 'House 1, Road 2',
+    billingCity: 'Dhaka',
     billingCountry: 'BD',
   });
 
@@ -42,7 +42,7 @@ export const CheckoutPage = (): JSX.Element => {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="card mx-auto max-w-md p-10 text-center">
-        <p className="text-slate-600">Your cart is empty.</p>
+        <p className="text-slate-600 dark:text-slate-300">Your cart is empty.</p>
         <button className="btn-primary mt-5" onClick={() => navigate('/')}>Browse assets</button>
       </div>
     );
@@ -87,9 +87,13 @@ export const CheckoutPage = (): JSX.Element => {
       }
 
       if (result.payment.provider === 'STRIPE' && result.payment.clientSecret) {
-        // Stripe confirmation happens on a dedicated page holding the Elements
-        // provider. The client secret is passed via router state, never as a
-        // query parameter, so it stays out of browser history and server logs.
+        // Cache client secret in sessionStorage so refreshes preserve checkout state
+        try {
+          sessionStorage.setItem(`stripe_cs_${result.order.orderNumber}`, result.payment.clientSecret);
+        } catch {
+          // Ignore storage errors
+        }
+
         navigate(`/checkout/stripe/${result.order.orderNumber}`, {
           state: { clientSecret: result.payment.clientSecret },
           replace: true,
@@ -111,6 +115,50 @@ export const CheckoutPage = (): JSX.Element => {
     <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
       <div>
         <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Checkout</h1>
+
+        {/* Safe Developer Test-Mode Banner */}
+        <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/70 p-4 text-xs dark:border-brand-900/60 dark:bg-brand-950/40">
+          <div className="flex items-center justify-between font-bold text-brand-900 dark:text-brand-200">
+            <span className="flex items-center gap-1.5 text-sm">
+              <span>🛠️</span>
+              {provider === 'SSLCOMMERZ' ? 'SSLCommerz Sandbox Mode Active' : 'Stripe Test Mode Active'}
+            </span>
+            <span className="rounded-full bg-brand-200/70 px-2 py-0.5 font-mono text-[11px] font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-300">
+              {currency} Settlement
+            </span>
+          </div>
+
+          <div className="mt-2.5 space-y-1.5 text-slate-700 dark:text-slate-300 leading-relaxed">
+            {provider === 'SSLCOMMERZ' ? (
+              <>
+                <p>
+                  • <strong>Gateway:</strong> Directs to official <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">sandbox.sslcommerz.com</code>.
+                </p>
+                <p>
+                  • <strong>Test Card:</strong> <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono font-bold text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">4012 0010 3014 1234</code> &bull; Exp: <code className="font-mono">12/28</code> &bull; CVV: <code className="font-mono">123</code> &bull; Name: Test Buyer.
+                </p>
+                <p>
+                  • <strong>Gateway Pay Button:</strong> The SSLCommerz sandbox "Pay Now" button activates automatically once test card details are entered or a mobile banking channel (bKash/Nagad) is chosen.
+                </p>
+                <p>
+                  • <strong>Sandbox OTP:</strong> Choose <em>Success</em>, <em>Success with risk</em>, or <em>Failed</em> to test the complete lifecycle.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  • <strong>Gateway:</strong> Uses Stripe Elements in official test mode.
+                </p>
+                <p>
+                  • <strong>Test Card:</strong> <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono font-bold text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">4242 4242 4242 4242</code> &bull; Exp: Any future date &bull; CVC: <code className="font-mono">123</code>.
+                </p>
+              </>
+            )}
+            <p className="pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 Change the currency in the top navigation bar to switch between <strong>SSLCommerz (BDT)</strong> and <strong>Stripe (USD)</strong>.
+            </p>
+          </div>
+        </div>
 
         {error && (
           <div className="mb-5">
