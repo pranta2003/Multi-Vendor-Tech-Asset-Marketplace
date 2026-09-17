@@ -135,7 +135,7 @@ export const ProductDetailPage = (): JSX.Element => {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               {product.category && (
-                <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+                <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 border border-brand-200/60 dark:bg-brand-950/80 dark:text-brand-200 dark:border-brand-800/60">
                   {product.category.name}
                 </span>
               )}

@@ -54,7 +54,7 @@ export const ThemeToggle = (): JSX.Element => {
             onClick={() => handleSelect('light')}
             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               theme === 'light'
-                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
+                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/80 dark:text-brand-200 dark:border dark:border-brand-800/60'
                 : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
             }`}
           >
@@ -74,7 +74,7 @@ export const ThemeToggle = (): JSX.Element => {
             onClick={() => handleSelect('dark')}
             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               theme === 'dark'
-                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
+                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/80 dark:text-brand-200 dark:border dark:border-brand-800/60'
                 : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
             }`}
           >
@@ -90,7 +90,7 @@ export const ThemeToggle = (): JSX.Element => {
             onClick={() => handleSelect('system')}
             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               theme === 'system'
-                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
+                ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/80 dark:text-brand-200 dark:border dark:border-brand-800/60'
                 : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
             }`}
           >
