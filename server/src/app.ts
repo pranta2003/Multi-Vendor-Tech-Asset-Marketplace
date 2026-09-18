@@ -11,7 +11,6 @@ import { requestId } from './middleware/requestId';
 import { globalLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
-import { ForbiddenError } from './utils/ApiError';
 
 export const createApp = (): Express => {
   const app = express();
@@ -49,14 +48,37 @@ export const createApp = (): Express => {
   }));
 
   const allowedOrigins = new Set(
-    [env.CLIENT_ORIGIN, isProduction ? null : 'http://localhost:5173'].filter((o): o is string => Boolean(o)),
+    [
+      env.CLIENT_ORIGIN,
+      'https://sandbox.sslcommerz.com',
+      'https://securepay.sslcommerz.com',
+      isProduction ? null : 'http://localhost:5173',
+    ].filter((o): o is string => Boolean(o)),
   );
+
+  const isOriginAllowed = (origin?: string): boolean => {
+    if (!origin) return true;
+    if (allowedOrigins.has(origin)) return true;
+    try {
+      const { hostname } = new URL(origin);
+      if (hostname === 'sslcommerz.com' || hostname.endsWith('.sslcommerz.com')) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  };
 
   app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) { callback(null, true); return; }
-      logger.warn({ origin }, 'Blocked by CORS');
-      callback(new ForbiddenError('Origin not allowed by CORS'));
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+        return;
+      }
+      logger.warn({ origin }, 'CORS origin not permitted');
+      // Use null, false so Express doesn't crash with 403 on standard top-level redirects/POSTs
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

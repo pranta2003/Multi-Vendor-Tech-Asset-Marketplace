@@ -14,6 +14,8 @@ const orderDetailSelect = {
   totalAmount: true,
   billingName: true,
   billingEmail: true,
+  billingPhone: true,
+  billingCountry: true,
   paidAt: true,
   fulfilledAt: true,
   failureReason: true,
@@ -26,12 +28,34 @@ const orderDetailSelect = {
       unitAmount: true,
       quantity: true,
       lineTotal: true,
+      product: {
+        select: {
+          slug: true,
+          vendor: { select: { storeName: true, slug: true } },
+        },
+      },
     },
   },
   payments: {
     orderBy: { createdAt: 'desc' as const },
     take: 1,
-    select: { provider: true, status: true, methodLabel: true, failureMessage: true },
+    select: {
+      provider: true,
+      status: true,
+      methodLabel: true,
+      failureMessage: true,
+      providerTxnId: true,
+      providerRef: true,
+      createdAt: true,
+    },
+  },
+  grants: {
+    select: {
+      licenseKey: true,
+      productId: true,
+      downloadCount: true,
+      maxDownloads: true,
+    },
   },
 } satisfies Prisma.OrderSelect;
 

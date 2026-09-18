@@ -84,6 +84,20 @@ router.get(
 
 /**
  * @openapi
+ * /orders/{orderNumber}/receipt:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Get customer receipt for one of your own orders
+ *     parameters:
+ *       - { in: path, name: orderNumber, required: true, schema: { type: string, example: MKT-20260904-7Q2XKD } }
+ *     responses:
+ *       200: { description: Order receipt detail }
+ *       404: { description: Not found, or not owned by the caller }
+ */
+router.get('/:orderNumber/receipt', validate(orderNumberSchema), asyncHandler(controller.receipt));
+
+/**
+ * @openapi
  * /orders/{orderNumber}:
  *   get:
  *     tags: [Orders]

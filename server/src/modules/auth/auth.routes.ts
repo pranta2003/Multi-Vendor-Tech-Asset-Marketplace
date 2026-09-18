@@ -3,7 +3,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
 import { authLimiter } from '../../middleware/rateLimiter';
 import * as controller from './auth.controller';
-import { changePasswordSchema, googleAuthSchema, loginSchema, registerSchema } from './auth.validation';
+import { changePasswordSchema, googleAuthSchema, loginSchema, registerSchema, updateProfileSchema } from './auth.validation';
 
 const router = Router();
 
@@ -379,6 +379,41 @@ router.post('/logout', controller.logout);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 router.get('/me', authenticate, controller.me);
+
+/**
+ * @openapi
+ * /auth/profile:
+ *   patch:
+ *     tags: [Auth]
+ *     summary: Update the authenticated user's profile
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName: { type: string, minLength: 2, maxLength: 120 }
+ *               phone: { type: string, example: "01712345678" }
+ *               avatarUrl: { type: string, format: uri }
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: Profile updated successfully }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user: { $ref: '#/components/schemas/PublicUser' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       422: { $ref: '#/components/responses/ValidationFailed' }
+ */
+router.patch('/profile', authenticate, validate(updateProfileSchema), controller.updateProfile);
 
 /**
  * @openapi

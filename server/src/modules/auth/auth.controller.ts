@@ -71,6 +71,11 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, { user }, 'Current user retrieved');
 });
 
+export const updateProfile = asyncHandler(async (req: Request, res: Response) => {
+  const user = await authService.updateProfile(req.user!.id, req.body);
+  sendSuccess(res, { user }, 'Profile updated successfully');
+});
+
 export const changePassword = asyncHandler(async (req: Request, res: Response) => {
   await authService.changePassword(req.user!.id, req.body);
   const { maxAge: _omit, ...clearOptions } = refreshCookieOptions();
