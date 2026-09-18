@@ -44,6 +44,9 @@ export const authApi = {
   me: (): Promise<PublicUser> =>
     api.get<SuccessBody<{ user: PublicUser }>>('/auth/me').then((r) => unwrap(r).user),
 
+  updateProfile: (input: { fullName?: string; phone?: string; avatarUrl?: string }): Promise<PublicUser> =>
+    api.patch<SuccessBody<{ user: PublicUser }>>('/auth/profile', input).then((r) => unwrap(r).user),
+
   logout: (): Promise<void> =>
     api.post<SuccessBody<null>>('/auth/logout').then(() => undefined),
 
@@ -120,6 +123,11 @@ export const orderApi = {
       .get<SuccessBody<{ order: OrderSummary }>>(`/orders/${encodeURIComponent(orderNumber)}`)
       .then((r) => unwrap(r).order),
 
+  receipt: (orderNumber: string): Promise<OrderSummary> =>
+    api
+      .get<SuccessBody<{ order: OrderSummary }>>(`/orders/${encodeURIComponent(orderNumber)}/receipt`)
+      .then((r) => unwrap(r).order),
+
   entitlements: (): Promise<Entitlement[]> =>
     api.get<SuccessBody<{ grants: Entitlement[] }>>('/orders/entitlements').then((r) => unwrap(r).grants),
 };
@@ -130,8 +138,20 @@ export const paymentApi = {
       .get<SuccessBody<PaymentStatusView>>(`/payments/${encodeURIComponent(orderNumber)}/status`)
       .then(unwrap),
 
-  config: (): Promise<{ stripePublishableKey?: string; currency?: string; sslczIsLive?: boolean }> =>
+  config: (): Promise<{
+    stripePublishableKey?: string;
+    currency?: string;
+    sslczIsLive?: boolean;
+    stripeMode?: 'test' | 'live';
+  }> =>
     api
-      .get<SuccessBody<{ stripePublishableKey?: string; currency?: string; sslczIsLive?: boolean }>>('/payments/config')
+      .get<
+        SuccessBody<{
+          stripePublishableKey?: string;
+          currency?: string;
+          sslczIsLive?: boolean;
+          stripeMode?: 'test' | 'live';
+        }>
+      >('/payments/config')
       .then(unwrap),
 };

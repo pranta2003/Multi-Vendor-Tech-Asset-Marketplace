@@ -17,6 +17,8 @@ import { CheckoutProcessingPage } from './pages/CheckoutProcessingPage';
 import { CheckoutResultPage } from './pages/CheckoutResultPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { OrderDetailPage } from './pages/OrderDetailPage';
+import { ReceiptPage } from './pages/ReceiptPage';
+import { AccountPage } from './pages/AccountPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { VendorPage } from './pages/VendorPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -57,11 +59,16 @@ export const App = (): JSX.Element => {
               CLIENT_ORIGIN + /checkout/{processing,failed,cancelled} exactly.
             */}
             <Route path="/checkout/processing" element={<ProtectedRoute><CheckoutProcessingPage /></ProtectedRoute>} />
+            <Route path="/checkout/result" element={<ProtectedRoute><CheckoutProcessingPage /></ProtectedRoute>} />
             <Route path="/checkout/failed" element={<CheckoutResultPage variant="failed" />} />
             <Route path="/checkout/cancelled" element={<CheckoutResultPage variant="cancelled" />} />
 
+            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+
             <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
             <Route path="/orders/:orderNumber" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+            <Route path="/orders/:orderNumber/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
             <Route path="/vendor" element={<ProtectedRoute roles={['VENDOR', 'ADMIN']}><VendorPage /></ProtectedRoute>} />
 

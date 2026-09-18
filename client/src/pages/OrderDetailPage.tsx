@@ -67,9 +67,42 @@ export const OrderDetailPage = (): JSX.Element => {
           <span>Total</span><span>{formatMoney(order.totalAmount, order.currency)}</span>
         </div>
 
-        {order.status === 'FULFILLED' && (
-          <Link to="/library" className="btn-primary mt-6 inline-flex">Open my library</Link>
-        )}
+        {/* Payment and Transaction Details */}
+        {order.payments && order.payments.length > 0 && order.payments[0] && (() => {
+          const payment = order.payments[0];
+          return (
+            <div className="mt-6 rounded-xl border border-surface-border bg-surface-muted/50 p-4 text-xs dark:border-slate-800 dark:bg-slate-800/50">
+              <h2 className="font-bold text-slate-700 dark:text-slate-300">Payment Details</h2>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 dark:text-slate-400">
+                <p>Gateway: <span className="font-semibold text-slate-900 dark:text-slate-100">{payment.provider}</span></p>
+                {payment.providerTxnId && (
+                  <p>Transaction ID: <span className="font-mono text-slate-900 dark:text-slate-100">{payment.providerTxnId}</span></p>
+                )}
+                {payment.methodLabel && (
+                  <p>Method: <span className="text-slate-900 dark:text-slate-100">{payment.methodLabel}</span></p>
+                )}
+                <p>Payment Status: <span className="font-semibold text-slate-900 dark:text-slate-100">{payment.status}</span></p>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            to={`/orders/${order.orderNumber}/receipt`}
+            className="btn-primary flex items-center gap-1.5 py-2 text-sm"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            View & Print Receipt
+          </Link>
+          {order.status === 'FULFILLED' && (
+            <Link to="/library" className="btn-secondary py-2 text-sm">
+              Open my library
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
