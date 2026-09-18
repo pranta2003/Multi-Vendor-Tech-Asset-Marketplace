@@ -25,6 +25,7 @@ interface AuthState {
   register: (input: {
     email: string; password: string; fullName: string; role?: 'CUSTOMER' | 'VENDOR'; storeName?: string;
   }) => Promise<PublicUser>;
+  updateProfile: (input: { fullName?: string; phone?: string; avatarUrl?: string }) => Promise<PublicUser>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -102,6 +103,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       return payload.user;
     } catch (err) {
       set({ loading: false, error: err instanceof Error ? err.message : 'Registration failed' });
+      throw err;
+    }
+  },
+
+  updateProfile: async (input) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedUser = await authApi.updateProfile(input);
+      set({ user: updatedUser, loading: false });
+      return updatedUser;
+    } catch (err) {
+      set({ loading: false, error: err instanceof Error ? err.message : 'Profile update failed' });
       throw err;
     }
   },

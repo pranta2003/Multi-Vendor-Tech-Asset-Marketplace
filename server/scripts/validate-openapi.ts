@@ -51,6 +51,7 @@ const expected: [string, string][] = [
   ['/auth/logout', 'post'],
   ['/auth/logout-all', 'post'],
   ['/auth/me', 'get'],
+  ['/auth/profile', 'patch'],
   ['/auth/change-password', 'patch'],
 ];
 for (const [p, m] of expected) {
@@ -67,8 +68,8 @@ for (const p of ['/auth/register', '/auth/login', '/auth/google', '/auth/logout'
 }
 const refreshOp = spec.paths['/auth/refresh']?.post as { security?: Record<string, unknown>[] };
 check('/auth/refresh declares cookieAuth', !!refreshOp?.security?.some((s) => 'cookieAuth' in s));
-for (const p of ['/auth/me', '/auth/logout-all', '/auth/change-password']) {
-  const m = p === '/auth/me' ? 'get' : p === '/auth/change-password' ? 'patch' : 'post';
+for (const p of ['/auth/me', '/auth/profile', '/auth/logout-all', '/auth/change-password']) {
+  const m = p === '/auth/me' ? 'get' : p === '/auth/change-password' || p === '/auth/profile' ? 'patch' : 'post';
   const op = spec.paths[p]?.[m] as { security?: unknown[] } | undefined;
   check(`${p} inherits global bearerAuth`, op?.security === undefined);
 }

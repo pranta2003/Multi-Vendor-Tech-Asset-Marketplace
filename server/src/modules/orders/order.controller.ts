@@ -25,6 +25,12 @@ export const detail = async (req: Request, res: Response): Promise<void> => {
   sendSuccess(res, { order }, 'Order retrieved');
 };
 
+export const receipt = async (req: Request, res: Response): Promise<void> => {
+  const { id } = requireUser(req);
+  const order = await orderService.getMyOrder(id, String(req.params.orderNumber));
+  sendSuccess(res, { order }, 'Receipt retrieved');
+};
+
 export const entitlements = async (req: Request, res: Response): Promise<void> => {
   const { id } = requireUser(req);
   const grants = await orderService.listMyEntitlements(id);

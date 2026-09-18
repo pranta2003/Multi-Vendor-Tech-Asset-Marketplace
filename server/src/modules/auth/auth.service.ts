@@ -6,12 +6,12 @@ import { hashToken, newUuid, signAccessToken, signRefreshToken, verifyRefreshTok
 import { logger } from '../../utils/logger';
 import { ConflictError, ForbiddenError, UnauthorizedError } from '../../utils/ApiError';
 import { verifyFirebaseToken } from '../../config/firebase';
-import type { ChangePasswordInput, GoogleAuthInput, LoginInput, RegisterInput } from './auth.validation';
+import type { ChangePasswordInput, GoogleAuthInput, LoginInput, RegisterInput, UpdateProfileInput } from './auth.validation';
 
 export interface ClientMeta { userAgent?: string; ipAddress?: string; }
 
 export interface PublicUser {
-  id: string; email: string; fullName: string; role: Role;
+  id: string; email: string; fullName: string; phone: string | null; role: Role;
   avatarUrl: string | null; isEmailVerified: boolean; createdAt: Date;
 }
 
@@ -20,7 +20,7 @@ export interface AuthResult {
 }
 
 const toPublicUser = (u: User): PublicUser => ({
-  id: u.id, email: u.email, fullName: u.fullName, role: u.role,
+  id: u.id, email: u.email, fullName: u.fullName, phone: u.phone, role: u.role,
   avatarUrl: u.avatarUrl, isEmailVerified: u.isEmailVerified, createdAt: u.createdAt,
 });
 
@@ -243,6 +243,20 @@ export const logoutAll = async (userId: string): Promise<number> => {
 
 export const getMe = async (userId: string): Promise<PublicUser> => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  return toPublicUser(user);
+};
+
+export const updateProfile = async (userId: string, input: UpdateProfileInput): Promise<PublicUser> => {
+  const data: Prisma.UserUpdateInput = {};
+  if (input.fullName !== undefined) data.fullName = input.fullName;
+  if (input.phone !== undefined) data.phone = input.phone;
+  if (input.avatarUrl !== undefined) data.avatarUrl = input.avatarUrl;
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+  logger.info({ userId }, 'User profile updated');
   return toPublicUser(user);
 };
 

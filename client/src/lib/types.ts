@@ -63,6 +63,7 @@ export interface PublicUser {
   id: string;
   email: string;
   fullName: string;
+  phone: string | null;
   role: Role;
   avatarUrl: string | null;
   isEmailVerified: boolean;
@@ -184,11 +185,28 @@ export interface OrderSummary {
   totalAmount: number;
   billingName: string;
   billingEmail: string;
+  billingPhone?: string | null;
+  billingCountry?: string | null;
   paidAt: string | null;
   fulfilledAt: string | null;
   failureReason: string | null;
   createdAt: string;
   items: OrderItemView[];
+  payments?: Array<{
+    provider: PaymentProvider;
+    status: PaymentStatus;
+    methodLabel?: string | null;
+    failureMessage?: string | null;
+    providerTxnId?: string | null;
+    providerRef?: string | null;
+    createdAt?: string;
+  }>;
+  grants?: Array<{
+    licenseKey: string;
+    productId: string;
+    downloadCount: number;
+    maxDownloads: number | null;
+  }>;
 }
 
 export interface OrderItemView {
@@ -198,6 +216,13 @@ export interface OrderItemView {
   unitAmount: number;
   quantity: number;
   lineTotal: number;
+  product?: {
+    slug?: string;
+    vendor?: {
+      storeName: string;
+      slug?: string;
+    };
+  };
 }
 
 export interface Entitlement {

@@ -123,6 +123,7 @@ export const sslczCancelRedirect = async (req: Request, res: Response): Promise<
  * requiring frontend-rebuilds on variable changes.
  */
 export const publicConfig = (_req: Request, res: Response): void => {
+  const isStripeTest = !env.STRIPE_SECRET_KEY || env.STRIPE_SECRET_KEY.startsWith('sk_test_');
   res.status(200).json({
     success: true,
     data: {
@@ -132,6 +133,7 @@ export const publicConfig = (_req: Request, res: Response): void => {
         '',
       currency: env.STRIPE_CURRENCY,
       sslczIsLive: env.SSLCZ_IS_LIVE,
+      stripeMode: isStripeTest ? 'test' : 'live',
     },
   });
 };

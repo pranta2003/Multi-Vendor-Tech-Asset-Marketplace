@@ -46,7 +46,21 @@ export const googleAuthSchema = z.object({
   }),
 });
 
+export const updateProfileSchema = z.object({
+  body: z.object({
+    fullName: z
+      .string()
+      .trim()
+      .min(2, 'Full name must be at least 2 characters')
+      .max(120, 'Full name must be at most 120 characters')
+      .optional(),
+    phone,
+    avatarUrl: z.string().url('Invalid avatar URL').optional().or(z.literal('')).transform((v) => v || undefined),
+  }),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>['body'];
 export type LoginInput = z.infer<typeof loginSchema>['body'];
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>['body'];
 export type GoogleAuthInput = z.infer<typeof googleAuthSchema>['body'];
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];

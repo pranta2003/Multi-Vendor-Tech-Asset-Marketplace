@@ -65,6 +65,11 @@ export const Layout = (): JSX.Element => {
               Browse
             </NavLink>
             {user && (
+              <NavLink to="/account" className={navLinkClass}>
+                My Account
+              </NavLink>
+            )}
+            {user && (
               <NavLink to="/library" className={navLinkClass}>
                 My library
               </NavLink>
@@ -126,7 +131,11 @@ export const Layout = (): JSX.Element => {
             <div className="hidden items-center gap-2 sm:flex">
               {user ? (
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
+                  <Link
+                    to="/account"
+                    title="Open Account Dashboard"
+                    className="flex items-center gap-2 rounded-lg p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
                     {user.avatarUrl ? (
                       <img
                         src={user.avatarUrl}
@@ -141,7 +150,7 @@ export const Layout = (): JSX.Element => {
                     <span className="max-w-[120px] truncate text-xs font-medium text-slate-700 dark:text-slate-300">
                       {user.fullName}
                     </span>
-                  </div>
+                  </Link>
                   <button onClick={handleLogout} className="btn-secondary h-9 px-3 text-xs">
                     Sign out
                   </button>
@@ -186,6 +195,11 @@ export const Layout = (): JSX.Element => {
                 Browse Catalog
               </NavLink>
               {user && (
+                <NavLink to="/account" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  My Account
+                </NavLink>
+              )}
+              {user && (
                 <NavLink to="/library" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
                   My Library
                 </NavLink>
@@ -205,7 +219,11 @@ export const Layout = (): JSX.Element => {
             <div className="mt-4 border-t border-surface-border pt-4 dark:border-slate-800">
               {user ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
                     {user.avatarUrl ? (
                       <img
                         src={user.avatarUrl}
@@ -221,7 +239,7 @@ export const Layout = (): JSX.Element => {
                       <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.fullName}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
                     </div>
-                  </div>
+                  </Link>
                   <button onClick={handleLogout} className="btn-secondary w-full py-2 text-sm">
                     Sign out
                   </button>
