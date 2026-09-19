@@ -77,6 +77,15 @@ router.get('/sslcommerz/success', asyncHandler(controller.sslczSuccessRedirect))
 router.get('/sslcommerz/fail', asyncHandler(controller.sslczFailRedirect));
 router.get('/sslcommerz/cancel', asyncHandler(controller.sslczCancelRedirect));
 
+// Route aliases supporting short /sslcz/* paths for legacy and alternative configurations
+router.post('/sslcz/ipn', asyncHandler(controller.sslczIpn));
+router.post('/sslcz/success', asyncHandler(controller.sslczSuccessRedirect));
+router.post('/sslcz/fail', asyncHandler(controller.sslczFailRedirect));
+router.post('/sslcz/cancel', asyncHandler(controller.sslczCancelRedirect));
+router.get('/sslcz/success', asyncHandler(controller.sslczSuccessRedirect));
+router.get('/sslcz/fail', asyncHandler(controller.sslczFailRedirect));
+router.get('/sslcz/cancel', asyncHandler(controller.sslczCancelRedirect));
+
 /**
  * @openapi
  * /payments/{orderNumber}/status:

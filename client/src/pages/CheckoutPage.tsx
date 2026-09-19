@@ -136,12 +136,18 @@ export const CheckoutPage = (): JSX.Element => {
                 </p>
                 <p>
                   • <strong>Test Card:</strong> <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono font-bold text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">4012 0010 3014 1234</code> &bull; Exp: <code className="font-mono">12/28</code> &bull; CVV: <code className="font-mono">123</code> &bull; Name: Test Buyer.
+                  • <strong>Whitelisted Test Cards:</strong> Visa <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono font-bold text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">4111 1111 1111 1111</code> or Mastercard <code className="rounded bg-brand-100/70 px-1 py-0.5 font-mono font-bold text-brand-800 dark:bg-brand-900/70 dark:text-brand-300">5111 1111 1111 1111</code> &bull; Exp: <code className="font-mono">12/28</code> &bull; CVV: <code className="font-mono">123</code> &bull; Name: <code className="font-mono">Test Customer</code>.
                 </p>
                 <p>
                   • <strong>Gateway Pay Button:</strong> The SSLCommerz sandbox "Pay Now" button activates automatically once test card details are entered or a mobile banking channel (bKash/Nagad) is chosen.
+                  • <strong>⚠️ "Remember card" Checkbox:</strong> Keep the <em>"Save card for faster checkout"</em> checkbox <strong>UNCHECKED</strong>. Checking it triggers an optional phone wallet registration in SSLCommerz which disables the PAY button until an SMS OTP is verified.
                 </p>
                 <p>
                   • <strong>Sandbox OTP:</strong> Choose <em>Success</em>, <em>Success with risk</em>, or <em>Failed</em> to test the complete lifecycle.
+                  • <strong>Mobile Banking:</strong> You can also click the <em>Mobile Banking</em> tab (bKash/Nagad) to activate the green PAY button instantly.
+                </p>
+                <p>
+                  • <strong>Sandbox 3DS OTP:</strong> On the simulator screen, select <em>Success</em> to complete the settlement and grant library access.
                 </p>
               </>
             ) : (
