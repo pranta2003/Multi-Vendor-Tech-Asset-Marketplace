@@ -102,21 +102,22 @@ export const createSslczSession = async (
     fail_url: `${env.SERVER_ORIGIN}/api/v1/payments/sslcommerz/fail`,
     cancel_url: `${env.SERVER_ORIGIN}/api/v1/payments/sslcommerz/cancel`,
     ipn_url: `${env.SERVER_ORIGIN}/api/v1/payments/sslcommerz/ipn`,
-
-    cus_name: input.customerName,
-    cus_email: input.customerEmail,
-    cus_phone: input.customerPhone,
-    cus_add1: input.customerAddress,
-    cus_city: input.customerCity,
-    cus_country: input.customerCountry,
+    cus_name: input.customerName.trim() || 'Valued Customer',
+    cus_email: input.customerEmail.trim() || 'customer@assethub.dev',
+    cus_phone: input.customerPhone.trim() || '01711000000',
+    cus_add1: input.customerAddress.trim() || 'Dhaka, Bangladesh',
+    cus_city: input.customerCity.trim() || 'Dhaka',
+    cus_country: input.customerCountry.trim() || 'Bangladesh',
+    cus_postcode: '1200',
 
     // Digital goods: SSLCommerz still requires shipping_method, and "NO" is the
     // documented value for non-shippable products.
     shipping_method: 'NO',
     num_of_item: '1',
-    product_name: input.productName,
+    product_name: input.productName.slice(0, 150),
     product_category: 'digital-goods',
     product_profile: 'digital-goods',
+    emi_option: '0',
   });
 
   const json = await postForm<SslczRawSessionResponse>(SESSION_URL, body);

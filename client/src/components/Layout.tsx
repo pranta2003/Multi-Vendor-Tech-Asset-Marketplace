@@ -46,8 +46,8 @@ export const Layout = (): JSX.Element => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-muted text-slate-800 transition-colors duration-150 dark:bg-slate-950 dark:text-slate-100">
-      <header className="sticky top-0 z-30 border-b border-surface-border bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+    <div className="flex min-h-screen flex-col bg-surface-muted text-slate-800 transition-colors duration-150 dark:bg-slate-950 dark:text-slate-100 print:bg-white print:text-slate-900 print:min-h-0">
+      <header className="sticky top-0 z-30 border-b border-surface-border bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 print:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:gap-6 sm:py-3.5">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -71,7 +71,7 @@ export const Layout = (): JSX.Element => {
             )}
             {user && (
               <NavLink to="/library" className={navLinkClass}>
-                My library
+                Library
               </NavLink>
             )}
             {user && (
@@ -81,56 +81,51 @@ export const Layout = (): JSX.Element => {
             )}
             {user?.role === 'VENDOR' && (
               <NavLink to="/vendor" className={navLinkClass}>
-                Vendor Portal
+                Vendor
               </NavLink>
             )}
           </nav>
 
-          {/* Header Actions */}
+          {/* Right Action Icons */}
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* Currency selector */}
-            <div className="relative">
-              <label className="sr-only" htmlFor="currency">
-                Currency
-              </label>
-              <select
-                id="currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as Currency)}
-                className="h-9 rounded-lg border border-surface-border bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="BDT">BDT (৳)</option>
-                <option value="USD">USD ($)</option>
-              </select>
-            </div>
+            {/* Currency Selector */}
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              aria-label="Select currency"
+              className="rounded-lg border border-surface-border bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-xs focus:border-brand-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="USD">USD ($)</option>
+              <option value="BDT">BDT (৳)</option>
+            </select>
 
-            {/* Theme Toggle */}
+            {/* Dark Mode Toggle */}
             <ThemeToggle />
 
             {/* Cart Icon */}
             <Link
               to="/cart"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-surface-border bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              aria-label="Cart"
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-surface-border bg-white text-slate-700 shadow-xs transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              aria-label={`Cart with ${cart?.itemCount ?? 0} items`}
             >
-              <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M2.25 3h1.5l1.7 9.4a2 2 0 002 1.6h7.9a2 2 0 002-1.6L19 6H5.3M8 19a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0z"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                 />
               </svg>
-              {Boolean(cart?.itemCount) && (
-                <span className="absolute -right-1 -top-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1 text-[11px] font-bold text-white shadow-sm">
-                  {cart?.itemCount}
+              {cart && cart.itemCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white shadow-sm">
+                  {cart.itemCount}
                 </span>
               )}
             </Link>
 
-            {/* User Session or Login (Desktop) */}
-            <div className="hidden items-center gap-2 sm:flex">
+            {/* User Auth Buttons / Profile Menu */}
+            <div className="hidden md:flex md:items-center md:gap-2">
               {user ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Link
                     to="/account"
                     title="Open Account Dashboard"
@@ -267,11 +262,11 @@ export const Layout = (): JSX.Element => {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 print:p-0 print:m-0 print:max-w-none print:w-full">
         <Outlet />
       </main>
 
-      <footer className="mt-auto border-t border-surface-border bg-white py-8 transition-colors duration-150 dark:border-slate-800 dark:bg-slate-900">
+      <footer className="mt-auto border-t border-surface-border bg-white py-8 transition-colors duration-150 dark:border-slate-800 dark:bg-slate-900 print:hidden">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
             <div>
