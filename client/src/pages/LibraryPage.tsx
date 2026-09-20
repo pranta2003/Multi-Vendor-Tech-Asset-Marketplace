@@ -52,8 +52,8 @@ export const LibraryPage = (): JSX.Element => {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg bg-surface-muted p-3 dark:bg-slate-800">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Licence key</p>
+              <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 dark:border-slate-700/80 dark:bg-slate-800/60">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Licence key</p>
                 <div className="mt-1 flex items-center gap-2">
                   <code className="flex-1 truncate font-mono text-sm text-slate-800 dark:text-slate-200">
                     {revealed[g.licenseKey] ? g.licenseKey : '•••••-•••••-•••••-•••••'}

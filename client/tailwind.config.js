@@ -12,6 +12,10 @@ export default {
         },
         surface: { DEFAULT: '#ffffff', muted: '#f6f7fb', border: '#e4e7ee' },
       },
+      boxShadow: {
+        '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+        xs: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
