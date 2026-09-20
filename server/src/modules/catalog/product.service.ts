@@ -63,9 +63,46 @@ const ORDER_BY: Record<ListProductsQuery['sort'], Prisma.ProductOrderByWithRelat
   popular: { downloadCount: 'desc' },
 };
 
+import { seedMarketplaceData } from './seed.data';
+
+let isCatalogSeeded = false;
+let seedCheckPromise: Promise<void> | null = null;
+
+export const ensureCatalogSeeded = async (): Promise<void> => {
+  if (isCatalogSeeded) return;
+  if (seedCheckPromise) return seedCheckPromise;
+
+  seedCheckPromise = (async () => {
+    try {
+      const count = await prisma.product.count({
+        where: { status: ProductStatus.PUBLISHED, deletedAt: null },
+      });
+      if (count < 24) {
+        await seedMarketplaceData(prisma);
+      }
+      isCatalogSeeded = true;
+    } catch {
+      // Non-fatal: if DB connection or permissions fail during check, let normal query proceed
+    } finally {
+      seedCheckPromise = null;
+    }
+  })();
+
+  return seedCheckPromise;
+};
+
+export const syncMarketplaceCatalog = async (): Promise<number> => {
+  const count = await seedMarketplaceData(prisma);
+  isCatalogSeeded = true;
+  return count;
+};
+
 export const listProducts = async (
   query: ListProductsQuery,
 ): Promise<{ items: unknown[]; meta: PaginationMeta }> => {
+  if (!isCatalogSeeded) {
+    await ensureCatalogSeeded();
+  }
   /**
    * Only PUBLISHED, non-deleted products are ever visible on the public
    * endpoint. This predicate is built here rather than left to the caller so a
@@ -103,6 +140,9 @@ export const listProducts = async (
 };
 
 export const getProductBySlug = async (slug: string): Promise<unknown> => {
+  if (!isCatalogSeeded) {
+    await ensureCatalogSeeded();
+  }
   const product = await prisma.product.findFirst({
     where: { slug, status: ProductStatus.PUBLISHED, deletedAt: null },
     select: {

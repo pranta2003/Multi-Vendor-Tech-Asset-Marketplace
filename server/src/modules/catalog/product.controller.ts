@@ -55,3 +55,9 @@ export const setStatus = async (req: Request, res: Response): Promise<void> => {
   );
   sendSuccess(res, { product }, 'Product status updated');
 };
+
+export const sync = async (_req: Request, res: Response): Promise<void> => {
+  const count = await productService.syncMarketplaceCatalog();
+  sendSuccess(res, { count }, 'Catalog synchronized successfully');
+};
+

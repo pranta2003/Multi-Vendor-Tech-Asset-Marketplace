@@ -48,6 +48,19 @@ router.get('/mine', authenticate, authorize(Role.VENDOR, Role.ADMIN), asyncHandl
 
 /**
  * @openapi
+ * /products/sync:
+ *   post:
+ *     tags: [Catalog]
+ *     summary: Synchronize and seed the 24 demo marketplace products idempotently
+ *     security: []
+ *     responses:
+ *       200: { description: Catalog synchronized }
+ */
+router.post('/sync', asyncHandler(controller.sync));
+
+
+/**
+ * @openapi
  * /products/{slug}:
  *   get:
  *     tags: [Catalog]
