@@ -124,19 +124,7 @@ export const AccountPage = (): JSX.Element => {
     setPasswordError(null);
 
     try {
-      await authApi.login; // to avoid lint
-      const res = await fetch('/api/v1/auth/change-password', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to change password');
-      }
+      await authApi.changePassword(currentPassword, newPassword);
       setPasswordSuccess('Password changed successfully! You will need to sign in again.');
       setCurrentPassword('');
       setNewPassword('');
@@ -157,12 +145,7 @@ export const AccountPage = (): JSX.Element => {
     }
     setRevokingSessions(true);
     try {
-      await fetch('/api/v1/auth/logout-all', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token') || ''}`,
-        },
-      });
+      await authApi.logoutAll();
       setSessionSuccess('All sessions revoked. Redirecting to login...');
       setTimeout(() => {
         void logout();

@@ -50,6 +50,14 @@ export const authApi = {
   logout: (): Promise<void> =>
     api.post<SuccessBody<null>>('/auth/logout').then(() => undefined),
 
+  logoutAll: (): Promise<void> =>
+    api.post<SuccessBody<null>>('/auth/logout-all').then(() => undefined),
+
+  changePassword: (currentPassword: string, newPassword: string): Promise<void> =>
+    api
+      .patch<SuccessBody<null>>('/auth/change-password', { currentPassword, newPassword })
+      .then(() => undefined),
+
   googleLogin: (idToken: string, role?: 'CUSTOMER' | 'VENDOR', storeName?: string): Promise<AuthPayload> =>
     api.post<SuccessBody<AuthPayload>>('/auth/google', { idToken, role, storeName }).then(unwrap),
 };
