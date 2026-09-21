@@ -188,7 +188,7 @@ export const RegisterPage = (): JSX.Element => {
               className="input"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="alex@example.com"
+              placeholder="pranta@example.com"
             />
           </div>
 
@@ -205,7 +205,7 @@ export const RegisterPage = (): JSX.Element => {
               className="input"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="At least 8 characters"
+              placeholder="At least 8 characters . Think it first !"
             />
             <div className="mt-2.5 rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800/80 dark:bg-slate-800/40">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
