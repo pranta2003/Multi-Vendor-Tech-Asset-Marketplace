@@ -18,3 +18,5 @@ export const globalLimiter = rateLimit({
 });
 export const authLimiter = rateLimit({ ...base, windowMs: env.RATE_LIMIT_WINDOW_MS, limit: env.AUTH_RATE_LIMIT_MAX, skipSuccessfulRequests: true });
 export const paymentLimiter = rateLimit({ ...base, windowMs: 60_000, limit: 10 });
+export const contactLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 10 });
+

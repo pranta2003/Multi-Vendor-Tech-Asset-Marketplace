@@ -36,6 +36,7 @@
     "seed": "npm --prefix server exec -- tsx scripts/seed-test.ts",
     "seed:marketplace": "npm --prefix server run seed:marketplace",
     "validate:openapi": "npm --prefix server run validate:openapi",
+    "test:contact": "npm --prefix server run test:contact",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f api",

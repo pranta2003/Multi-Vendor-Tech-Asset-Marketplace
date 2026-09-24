@@ -4,11 +4,13 @@ import productRoutes from '../modules/catalog/product.routes';
 import cartRoutes from '../modules/cart/cart.routes';
 import orderRoutes from '../modules/orders/order.routes';
 import paymentRoutes from '../modules/payments/payment.routes';
+import contactRoutes from '../modules/contact/contact.routes';
 import { prisma } from '../config/prisma';
 import { sendSuccess } from '../utils/ApiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
+
 
 /**
  * @openapi
@@ -71,5 +73,7 @@ router.use('/products', productRoutes);
 router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/contact', contactRoutes);
 
 export default router;
+

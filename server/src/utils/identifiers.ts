@@ -52,3 +52,16 @@ export const generateLicenseKey = (): string => {
  * characters - hence the deliberately short encoding rather than a raw UUID.
  */
 export const generateGatewayTransactionId = (): string => `TXN${Date.now().toString(36).toUpperCase()}${randomCrockford(8)}`;
+
+/**
+ * Ticket numbers for customer support requests.
+ * Format: TKT-YYYYMMDD-XXXXXX in Crockford base32.
+ * Example: TKT-20260924-7Q2XKD
+ */
+export const generateTicketNumber = (now: Date = new Date()): string => {
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  return `TKT-${y}${m}${d}-${randomCrockford(6)}`;
+};
+

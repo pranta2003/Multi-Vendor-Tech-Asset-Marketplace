@@ -9,8 +9,10 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "validate:openapi": "tsx scripts/validate-openapi.ts",
+    "test:contact": "tsx scripts/test-contact.ts",
     "seed:marketplace": "tsx scripts/seed-marketplace.ts"
   },
+
   "dependencies": {
     "@prisma/client": "5.22.0",
     "argon2": "0.41.1",

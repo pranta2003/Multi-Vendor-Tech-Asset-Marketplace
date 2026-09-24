@@ -64,7 +64,11 @@ export const Layout = (): JSX.Element => {
             <NavLink to="/" className={navLinkClass} end>
               Browse Catalog
             </NavLink>
+            <NavLink to="/contact" className={navLinkClass}>
+              Support
+            </NavLink>
             {user && (
+
               <NavLink to="/account" className={navLinkClass}>
                 My Account
               </NavLink>
@@ -191,7 +195,11 @@ export const Layout = (): JSX.Element => {
               <NavLink to="/" className={mobileNavLinkClass} end onClick={() => setMobileMenuOpen(false)}>
                 Browse Catalog
               </NavLink>
+              <NavLink to="/contact" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                Support & Contact
+              </NavLink>
               {user && (
+
                 <NavLink to="/account" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
                   My Account
                 </NavLink>
@@ -297,7 +305,11 @@ export const Layout = (): JSX.Element => {
               <Link to="/" className="transition hover:text-brand-600 dark:hover:text-brand-400">
                 Browse
               </Link>
+              <Link to="/contact" className="transition hover:text-brand-600 dark:hover:text-brand-400">
+                Contact Us
+              </Link>
               <Link to="/login" className="transition hover:text-brand-600 dark:hover:text-brand-400">
+
                 Sign In
               </Link>
               <Link to="/register" className="transition hover:text-brand-600 dark:hover:text-brand-400">
