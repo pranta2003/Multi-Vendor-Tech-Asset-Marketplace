@@ -49,14 +49,13 @@ export async function ensureSupportSchema(): Promise<void> {
 
   schemaInitPromise = (async () => {
     try {
-      await prisma.$executeRawUnsafe(`
-        DO $$ BEGIN
-          CREATE TYPE "SupportTicketStatus" AS ENUM ('NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-
-        CREATE TABLE IF NOT EXISTS "support_tickets" (
+      const ddlStatements = [
+        `DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'SupportTicketStatus') THEN
+            CREATE TYPE "SupportTicketStatus" AS ENUM ('NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
+          END IF;
+        END $$;`,
+        `CREATE TABLE IF NOT EXISTS "support_tickets" (
           "id" UUID NOT NULL DEFAULT gen_random_uuid(),
           "ticketNumber" VARCHAR(32) NOT NULL,
           "name" VARCHAR(120) NOT NULL,
@@ -72,25 +71,27 @@ export async function ensureSupportSchema(): Promise<void> {
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CONSTRAINT "support_tickets_pkey" PRIMARY KEY ("id")
-        );
-
-        CREATE UNIQUE INDEX IF NOT EXISTS "support_tickets_ticketNumber_key" ON "support_tickets"("ticketNumber");
-        CREATE INDEX IF NOT EXISTS "support_tickets_status_createdAt_idx" ON "support_tickets"("status", "createdAt" DESC);
-        CREATE INDEX IF NOT EXISTS "support_tickets_email_idx" ON "support_tickets"("email");
-        CREATE INDEX IF NOT EXISTS "support_tickets_userId_idx" ON "support_tickets"("userId");
-        CREATE INDEX IF NOT EXISTS "support_tickets_ticketNumber_idx" ON "support_tickets"("ticketNumber");
-
-        DO $$ BEGIN
+        )`,
+        `CREATE UNIQUE INDEX IF NOT EXISTS "support_tickets_ticketNumber_key" ON "support_tickets"("ticketNumber")`,
+        `CREATE INDEX IF NOT EXISTS "support_tickets_status_createdAt_idx" ON "support_tickets"("status", "createdAt" DESC)`,
+        `CREATE INDEX IF NOT EXISTS "support_tickets_email_idx" ON "support_tickets"("email")`,
+        `CREATE INDEX IF NOT EXISTS "support_tickets_userId_idx" ON "support_tickets"("userId")`,
+        `CREATE INDEX IF NOT EXISTS "support_tickets_ticketNumber_idx" ON "support_tickets"("ticketNumber")`,
+        `DO $$ BEGIN
           IF NOT EXISTS (
             SELECT 1 FROM pg_constraint WHERE conname = 'support_tickets_userId_fkey'
           ) THEN
             ALTER TABLE "support_tickets" ADD CONSTRAINT "support_tickets_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
           END IF;
-        END $$;
-      `);
+        END $$;`
+      ];
+
+      for (const sql of ddlStatements) {
+        await prisma.$executeRawUnsafe(sql);
+      }
       isSchemaEnsured = true;
     } catch (err) {
-      logger.warn({ err }, 'Support schema check encountered non-fatal error; proceeding with standard Prisma queries');
+      logger.error({ err }, 'Support schema check encountered error in DDL execution');
     } finally {
       schemaInitPromise = null;
     }
