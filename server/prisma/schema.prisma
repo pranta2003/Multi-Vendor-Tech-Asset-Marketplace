@@ -57,6 +57,12 @@ enum PayoutStatus {
   PAID
   FAILED
 }
+enum SupportTicketStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
 
 model User {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -77,6 +83,7 @@ model User {
   reviews Review[]
   refreshTokens RefreshToken[]
   downloads DownloadGrant[]
+  supportTickets SupportTicket[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([role])
@@ -356,4 +363,27 @@ model Payout {
   updatedAt DateTime @updatedAt
   @@index([vendorId, status])
   @@map("payouts")
+}
+
+model SupportTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketNumber String @unique @db.VarChar(32)
+  name String @db.VarChar(120)
+  email String @db.Citext
+  phone String? @db.VarChar(24)
+  subject String @db.VarChar(200)
+  inquiryType String @db.VarChar(50)
+  orderId String? @db.VarChar(64)
+  message String @db.Text
+  status SupportTicketStatus @default(NEW)
+  adminNotes String? @db.Text
+  userId String? @db.Uuid
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt(sort: Desc)])
+  @@index([email])
+  @@index([userId])
+  @@index([ticketNumber])
+  @@map("support_tickets")
 }

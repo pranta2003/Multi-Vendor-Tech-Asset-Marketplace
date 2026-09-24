@@ -165,7 +165,9 @@ const options: swaggerJsdoc.Options = {
       { name: 'Cart', description: 'Server-authoritative cart. Prices are never accepted from the client.' },
       { name: 'Orders', description: 'Checkout, order history, and purchased-licence entitlements.' },
       { name: 'Payments', description: 'Gateway callbacks and payment status. Fulfilment happens here, not on redirect.' },
+      { name: 'Support', description: 'Customer support inquiries, contact submissions, and administrative ticket management.' },
     ],
+
   },
   /**
    * Both .ts and .js are globbed so the docs are identical whether the app runs
