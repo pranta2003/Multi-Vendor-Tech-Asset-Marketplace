@@ -46,6 +46,9 @@ jobs:
       - name: Validate OpenAPI
         run: npm run validate:openapi
 
+      - name: Test Contact Support System
+        run: npm run test:contact
+
       - name: Validate infrastructure
         run: |
           pip install pyyaml
