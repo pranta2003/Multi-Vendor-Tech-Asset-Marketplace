@@ -234,3 +234,40 @@ export interface Entitlement {
   order: { orderNumber: string };
   product: { id: string; title: string; slug: string; thumbnailUrl: string };
 }
+
+export type SupportTicketStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject: string;
+  inquiryType: string;
+  orderId?: string | null;
+  message: string;
+  status: SupportTicketStatus;
+  adminNotes?: string | null;
+  userId?: string | null;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role?: Role;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupportTicketInput {
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  inquiryType: string;
+  orderId?: string;
+  message: string;
+  hp?: string;
+}
+

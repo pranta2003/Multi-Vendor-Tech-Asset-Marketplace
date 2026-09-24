@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
 import { useCartStore } from '../store/cart.store';
-import { orderApi, authApi } from '../lib/services';
+import { orderApi, authApi, contactApi } from '../lib/services';
 import { formatMoney } from '../lib/money';
 import { PageLoader, Spinner } from '../components/Spinner';
 import { Alert } from '../components/Alert';
 import { StatusBadge } from '../components/StatusBadge';
-import type { OrderSummary, Entitlement } from '../lib/types';
+import type { OrderSummary, Entitlement, SupportTicket, SupportTicketStatus } from '../lib/types';
 
-type Tab = 'overview' | 'orders' | 'library' | 'settings';
+type Tab = 'overview' | 'orders' | 'library' | 'support' | 'admin-support' | 'settings';
 
 export const AccountPage = (): JSX.Element => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab) || 'overview';
   const [activeTab, setActiveTab] = useState<Tab>(
-    ['overview', 'orders', 'library', 'settings'].includes(initialTab) ? initialTab : 'overview',
+    ['overview', 'orders', 'library', 'support', 'admin-support', 'settings'].includes(initialTab)
+      ? initialTab
+      : 'overview',
   );
+
 
   const { user, updateProfile, logout } = useAuthStore();
   const cart = useCartStore((s) => s.cart);
@@ -52,6 +55,21 @@ export const AccountPage = (): JSX.Element => {
   // Revoke all sessions state
   const [revokingSessions, setRevokingSessions] = useState(false);
   const [sessionSuccess, setSessionSuccess] = useState<string | null>(null);
+
+  // Customer Support State
+  const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [ticketsLoaded, setTicketsLoaded] = useState(false);
+
+  // Admin Support Inbox State
+  const [adminTickets, setAdminTickets] = useState<SupportTicket[]>([]);
+  const [loadingAdminTickets, setLoadingAdminTickets] = useState(false);
+  const [adminStatusFilter, setAdminStatusFilter] = useState<'ALL' | SupportTicketStatus>('ALL');
+  const [adminSearch, setAdminSearch] = useState('');
+  const [updatingTicketId, setUpdatingTicketId] = useState<string | null>(null);
+  const [adminFeedback, setAdminFeedback] = useState<{ id: string; message: string; isError?: boolean } | null>(null);
+  const [ticketNotesInput, setTicketNotesInput] = useState<Record<string, string>>({});
+
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +109,73 @@ export const AccountPage = (): JSX.Element => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
+
+  useEffect(() => {
+    if (activeTab === 'support' && !ticketsLoaded) {
+      setLoadingTickets(true);
+      contactApi
+        .listMine()
+        .then((items) => {
+          setMyTickets(items);
+          setTicketsLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingTickets(false));
+    }
+  }, [activeTab, ticketsLoaded]);
+
+  const loadAdminTickets = () => {
+    if (user?.role !== 'ADMIN') return;
+    setLoadingAdminTickets(true);
+    contactApi
+      .listAll({
+        limit: 50,
+        status: adminStatusFilter === 'ALL' ? undefined : adminStatusFilter,
+        search: adminSearch.trim() || undefined,
+      })
+      .then((res) => {
+        setAdminTickets(res.items ?? []);
+        const notesMap: Record<string, string> = {};
+        for (const t of res.items ?? []) {
+          if (t.adminNotes) notesMap[t.id] = t.adminNotes;
+        }
+        setTicketNotesInput((prev) => ({ ...notesMap, ...prev }));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAdminTickets(false));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'admin-support' && user?.role === 'ADMIN') {
+      loadAdminTickets();
+    }
+  }, [activeTab, adminStatusFilter, user]);
+
+  const handleUpdateTicketStatus = async (
+    ticketId: string,
+    newStatus: SupportTicketStatus,
+  ) => {
+    setUpdatingTicketId(ticketId);
+    setAdminFeedback(null);
+    try {
+      const notes = ticketNotesInput[ticketId];
+      const updated = await contactApi.updateStatus(ticketId, newStatus, notes);
+      setAdminTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: updated.status, adminNotes: updated.adminNotes } : t)),
+      );
+      setAdminFeedback({ id: ticketId, message: `Status updated to ${newStatus}` });
+      setTimeout(() => setAdminFeedback(null), 3000);
+    } catch (err: any) {
+      setAdminFeedback({
+        id: ticketId,
+        message: err?.message || 'Failed to update ticket status',
+        isError: true,
+      });
+    } finally {
+      setUpdatingTicketId(null);
+    }
+  };
+
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +378,38 @@ export const AccountPage = (): JSX.Element => {
 
         <button
           type="button"
+          onClick={() => handleTabChange('support')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 whitespace-nowrap transition-colors ${
+            activeTab === 'support'
+              ? 'border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400 font-semibold'
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Support Tickets
+        </button>
+
+        {user.role === 'ADMIN' && (
+          <button
+            type="button"
+            onClick={() => handleTabChange('admin-support')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 whitespace-nowrap transition-colors ${
+              activeTab === 'admin-support'
+                ? 'border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400 font-semibold'
+                : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Admin Support Inbox
+          </button>
+        )}
+
+        <button
+          type="button"
           onClick={() => handleTabChange('settings')}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 whitespace-nowrap transition-colors ${
             activeTab === 'settings'
@@ -307,6 +424,7 @@ export const AccountPage = (): JSX.Element => {
           Settings & Security
         </button>
       </div>
+
 
       {dataError && (
         <div className="mt-4">
@@ -654,6 +772,333 @@ export const AccountPage = (): JSX.Element => {
               )}
             </div>
           )}
+
+          {/* TAB 4: SUPPORT TICKETS */}
+          {activeTab === 'support' && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                    My Support Inquiries
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Review and track inquiries you have submitted to AssetHub customer support.
+                  </p>
+                </div>
+                <Link
+                  to="/contact"
+                  className="btn-primary flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Submit New Request</span>
+                </Link>
+              </div>
+
+              {loadingTickets ? (
+                <div className="py-12">
+                  <PageLoader label="Loading your support tickets" />
+                </div>
+              ) : myTickets.length === 0 ? (
+                <div className="card p-8 text-center sm:p-12">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
+                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-base font-bold text-slate-900 dark:text-white">
+                    No Support Tickets Found
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-md text-xs text-slate-500 dark:text-slate-400">
+                    You have not submitted any customer support requests. If you have any questions regarding your purchased digital assets, orders, or license keys, our team is ready to help.
+                  </p>
+                  <div className="mt-5">
+                    <Link to="/contact" className="btn-primary inline-flex px-5 py-2 text-xs font-bold">
+                      Contact Support Now
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myTickets.map((ticket) => {
+                    const statusColors: Record<SupportTicketStatus, string> = {
+                      NEW: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/60',
+                      IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60',
+                      RESOLVED: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
+                      CLOSED: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+                    };
+
+                    return (
+                      <div key={ticket.id} className="card p-5 space-y-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-xs font-bold tracking-tight text-slate-900 dark:text-white">
+                              {ticket.ticketNumber}
+                            </span>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusColors[ticket.status]}`}>
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">
+                            {new Date(ticket.createdAt).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              {ticket.inquiryType}
+                            </span>
+                            {ticket.orderId && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                Order: <span className="font-mono font-bold text-slate-700 dark:text-slate-200">{ticket.orderId}</span>
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="mt-2 text-sm font-bold text-slate-900 dark:text-white">
+                            {ticket.subject}
+                          </h3>
+                          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50/70 p-3 rounded-xl dark:bg-slate-800/40">
+                            {ticket.message}
+                          </p>
+                        </div>
+
+                        {ticket.adminNotes && (
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>AssetHub Support Resolution</span>
+                            </div>
+                            <p className="mt-1.5 text-xs leading-relaxed text-emerald-900 dark:text-emerald-200 whitespace-pre-wrap">
+                              {ticket.adminNotes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: ADMIN SUPPORT INBOX */}
+          {activeTab === 'admin-support' && user.role === 'ADMIN' && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">Admin</span>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                      Support Management Inbox
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Review and manage inquiries, update ticket resolution status, and attach internal notes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadAdminTickets}
+                  disabled={loadingAdminTickets}
+                  className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5"
+                >
+                  {loadingAdminTickets ? <Spinner className="h-3.5 w-3.5" /> : (
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  )}
+                  <span>Refresh Inbox</span>
+                </button>
+              </div>
+
+              {/* Status Filters & Search Bar */}
+              <div className="card p-4 space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['ALL', 'NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setAdminStatusFilter(st)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        adminStatusFilter === st
+                          ? 'bg-brand-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {st === 'ALL' ? 'All Tickets' : st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="input text-xs"
+                    placeholder="Search by ticket #, customer name, email, or order ID..."
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') loadAdminTickets();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={loadAdminTickets}
+                    className="btn-primary shrink-0 px-4 py-2 text-xs font-bold"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin Feedback Notice */}
+              {adminFeedback && (
+                <Alert tone={adminFeedback.isError ? 'error' : 'success'}>
+                  {adminFeedback.message}
+                </Alert>
+              )}
+
+              {/* Tickets Table / Cards */}
+              {loadingAdminTickets ? (
+                <div className="py-12">
+                  <PageLoader label="Loading support tickets" />
+                </div>
+              ) : adminTickets.length === 0 ? (
+                <div className="card p-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                  No support tickets found matching the selected filter.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {adminTickets.map((ticket) => (
+                    <div key={ticket.id} className="card p-5 space-y-4">
+                      {/* Ticket Header */}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                            {ticket.ticketNumber}
+                          </span>
+                          <span className="rounded-md bg-brand-50 text-brand-700 px-2 py-0.5 text-[11px] font-semibold dark:bg-brand-950 dark:text-brand-300">
+                            {ticket.inquiryType}
+                          </span>
+                          {ticket.orderId && (
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                              Order: <strong>{ticket.orderId}</strong>
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          {new Date(ticket.createdAt).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Customer Info & Message */}
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div className="space-y-1 text-xs">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{ticket.name}</p>
+                          <p>
+                            <a href={`mailto:${ticket.email}`} className="text-brand-600 hover:underline dark:text-brand-400">
+                              {ticket.email}
+                            </a>
+                          </p>
+                          {ticket.phone && (
+                            <p className="text-slate-500 dark:text-slate-400">
+                              Phone: <a href={`tel:${ticket.phone}`} className="hover:underline">{ticket.phone}</a>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="sm:col-span-2 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Subject: {ticket.subject}
+                          </p>
+                          <div className="rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 whitespace-pre-wrap">
+                            {ticket.message}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status Management Bar */}
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              Status:
+                            </label>
+                            <select
+                              value={ticket.status}
+                              disabled={updatingTicketId === ticket.id}
+                              onChange={(e) =>
+                                handleUpdateTicketStatus(
+                                  ticket.id,
+                                  e.target.value as SupportTicketStatus,
+                                )
+                              }
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-xs focus:border-brand-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            >
+                              <option value="NEW">NEW</option>
+                              <option value="IN_PROGRESS">IN PROGRESS</option>
+                              <option value="RESOLVED">RESOLVED</option>
+                              <option value="CLOSED">CLOSED</option>
+                            </select>
+                            {updatingTicketId === ticket.id && <Spinner className="h-4 w-4" />}
+                          </div>
+
+                          <span className="text-[11px] text-slate-400">
+                            Last Updated: {new Date(ticket.updatedAt).toLocaleTimeString()}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                            Admin Resolution / Internal Notes:
+                          </label>
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              type="text"
+                              className="input text-xs"
+                              placeholder="Enter resolution notes, refund confirmation, or internal remarks..."
+                              value={ticketNotesInput[ticket.id] ?? ticket.adminNotes ?? ''}
+                              onChange={(e) =>
+                                setTicketNotesInput({
+                                  ...ticketNotesInput,
+                                  [ticket.id]: e.target.value,
+                                })
+                              }
+                            />
+                            <button
+                              type="button"
+                              disabled={updatingTicketId === ticket.id}
+                              onClick={() => handleUpdateTicketStatus(ticket.id, ticket.status)}
+                              className="btn-secondary shrink-0 px-3 py-1.5 text-xs font-semibold"
+                            >
+                              Save Note
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
 
           {/* TAB 4: SETTINGS & SECURITY */}
           {activeTab === 'settings' && (

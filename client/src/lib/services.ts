@@ -14,7 +14,11 @@ import type {
   PublicUser,
   VendorProduct,
   SuccessBody,
+  CreateSupportTicketInput,
+  SupportTicket,
+  SupportTicketStatus,
 } from './types';
+
 
 /**
  * A thin, typed function per endpoint. Components never call axios directly, so
@@ -163,3 +167,41 @@ export const paymentApi = {
       >('/payments/config')
       .then(unwrap),
 };
+
+export const contactApi = {
+  submit: (input: CreateSupportTicketInput): Promise<SupportTicket> =>
+    api.post<SuccessBody<SupportTicket>>('/contact', input).then(unwrap),
+
+  listMine: (): Promise<SupportTicket[]> =>
+    api.get<SuccessBody<SupportTicket[]>>('/contact/my-tickets').then(unwrap),
+
+  listAll: (
+    params: {
+      page?: number;
+      limit?: number;
+      status?: SupportTicketStatus;
+      inquiryType?: string;
+      search?: string;
+    } = {},
+  ): Promise<{ items: SupportTicket[]; meta: PaginationMeta | undefined }> =>
+    api.get<SuccessBody<SupportTicket[]>>('/contact', { params }).then((r) => {
+      const { data, meta } = unwrapPaged(r);
+      return { items: data, meta };
+    }),
+
+  getById: (id: string): Promise<SupportTicket> =>
+    api.get<SuccessBody<SupportTicket>>(`/contact/${encodeURIComponent(id)}`).then(unwrap),
+
+  updateStatus: (
+    id: string,
+    status: SupportTicketStatus,
+    adminNotes?: string,
+  ): Promise<SupportTicket> =>
+    api
+      .patch<SuccessBody<SupportTicket>>(`/contact/${encodeURIComponent(id)}/status`, {
+        status,
+        adminNotes,
+      })
+      .then(unwrap),
+};
+

@@ -21,7 +21,9 @@ import { ReceiptPage } from './pages/ReceiptPage';
 import { AccountPage } from './pages/AccountPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { VendorPage } from './pages/VendorPage';
+import { ContactPage } from './pages/ContactPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+
 
 export const App = (): JSX.Element => {
   const { user, initialising, initialise } = useAuthStore();
@@ -71,8 +73,10 @@ export const App = (): JSX.Element => {
             <Route path="/orders/:orderNumber/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />
             <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
             <Route path="/vendor" element={<ProtectedRoute roles={['VENDOR', 'ADMIN']}><VendorPage /></ProtectedRoute>} />
+            <Route path="/contact" element={<ContactPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
+
           </Route>
         </Routes>
       </BrowserRouter>
