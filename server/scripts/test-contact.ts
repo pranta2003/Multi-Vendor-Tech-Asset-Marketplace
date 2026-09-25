@@ -1,3 +1,15 @@
+// Safe mock environment defaults so the tests run in isolated environments without live DB or secrets
+process.env.NODE_ENV ||= 'test';
+process.env.CLIENT_ORIGIN ||= 'http://localhost:8080';
+process.env.SERVER_ORIGIN ||= 'http://localhost:8080';
+process.env.DATABASE_URL ||= 'postgresql://marketplace:mock@localhost:5432/marketplace_db?schema=public';
+process.env.JWT_ACCESS_SECRET ||= 'mock_access_secret_min_32_characters_long_val';
+process.env.JWT_REFRESH_SECRET ||= 'mock_refresh_secret_min_32_characters_long_val';
+process.env.STRIPE_SECRET_KEY ||= 'mock_stripe_secret_key';
+process.env.STRIPE_WEBHOOK_SECRET ||= 'mock_stripe_webhook_secret';
+process.env.SSLCZ_STORE_ID ||= 'mock_sslcz_store_id';
+process.env.SSLCZ_STORE_PASSWORD ||= 'mock_sslcz_store_password';
+
 import assert from 'node:assert';
 import {
   createContactSchema,
@@ -7,6 +19,12 @@ import {
   INQUIRY_TYPES,
 } from '../src/modules/contact/contact.validation';
 import { generateTicketNumber } from '../src/utils/identifiers';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const {
+  buildNotificationEmailHtml,
+  buildNotificationEmailText,
+  sendTicketNotifications,
+} = require('../src/modules/contact/notification.service');
 
 console.log('=== Running Contact Support System Tests ===');
 
@@ -173,5 +191,103 @@ test('ticketIdParamSchema validates UUID format', () => {
   assert(!invalid.success);
 });
 
-console.log(`\nResults: ${pass} PASSED, ${fail} FAILED`);
-if (fail > 0) process.exit(1);
+// 5. Email Template & Notification Tests
+test('buildNotificationEmailHtml renders branding, customer info, and ticket data', () => {
+  const payload = {
+    ticketNumber: 'TKT-20260925-ABC123',
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    phone: '+8801700000000',
+    subject: 'Refund request for checkout bug',
+    inquiryType: 'Payment / Billing',
+    orderId: 'MKT-20260925-XYZ987',
+    message: 'Hello Support,\nI encountered an error during checkout and was charged twice.',
+    createdAt: new Date('2026-09-25T12:00:00Z'),
+  };
+  const adminUrl = 'https://marketplace.example.com/account?tab=admin-support';
+  const html = buildNotificationEmailHtml(payload, adminUrl);
+
+  assert(html.includes('TKT-20260925-ABC123'), 'Must contain ticket number');
+  assert(html.includes('John Doe'), 'Must contain customer name');
+  assert(html.includes('johndoe@example.com'), 'Must contain customer email');
+  assert(html.includes('+8801700000000'), 'Must contain customer phone');
+  assert(html.includes('Payment / Billing'), 'Must contain inquiry type');
+  assert(html.includes('MKT-20260925-XYZ987'), 'Must contain order ID');
+  assert(html.includes('Refund request for checkout bug'), 'Must contain subject');
+  assert(html.includes('I encountered an error during checkout'), 'Must contain message');
+  assert(html.includes(adminUrl), 'Must contain admin URL button link');
+  assert(html.includes('Direct Reply:'), 'Must contain direct reply notice');
+});
+
+test('buildNotificationEmailText renders clean plain-text format', () => {
+  const payload = {
+    ticketNumber: 'TKT-20260925-ABC123',
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    subject: 'General Question',
+    inquiryType: 'General Question',
+    message: 'Simple question',
+    createdAt: new Date('2026-09-25T12:00:00Z'),
+  };
+  const adminUrl = 'https://marketplace.example.com/account?tab=admin-support';
+  const text = buildNotificationEmailText(payload, adminUrl);
+
+  assert(text.includes('AssetHub — New Customer Support Request'));
+  assert(text.includes('TKT-20260925-ABC123'));
+  assert(text.includes('johndoe@example.com'));
+  assert(text.includes(adminUrl));
+});
+
+(async () => {
+  // Test sendTicketNotifications returns SKIPPED_NO_API_KEY when no RESEND_API_KEY
+  delete process.env.RESEND_API_KEY;
+  const result = await sendTicketNotifications({
+    ticketNumber: 'TKT-20260925-ABC123',
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    subject: 'General Question',
+    inquiryType: 'General Question',
+    message: 'Simple question',
+    createdAt: new Date(),
+  });
+  if (result.status === 'SKIPPED_NO_API_KEY') {
+    pass++;
+    console.log('  PASS  sendTicketNotifications gracefully returns SKIPPED_NO_API_KEY when key missing');
+  } else {
+    fail++;
+    console.error('  FAIL  Expected SKIPPED_NO_API_KEY but got ' + result.status);
+  }
+
+  // Test sendTicketNotifications returns EMAIL_FAILED on API error
+  process.env.RESEND_API_KEY = 're_test_key_123';
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: false,
+    status: 403,
+    json: async () => ({ message: 'Domain not verified', name: 'restricted_api_key' }),
+  }) as any;
+
+  const failedResult = await sendTicketNotifications({
+    ticketNumber: 'TKT-20260925-FAIL99',
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    subject: 'General Question',
+    inquiryType: 'General Question',
+    message: 'Simple question',
+    createdAt: new Date(),
+  });
+
+  global.fetch = originalFetch;
+  delete process.env.RESEND_API_KEY;
+
+  if (failedResult.status === 'EMAIL_FAILED' && failedResult.error === 'Domain not verified') {
+    pass++;
+    console.log('  PASS  sendTicketNotifications gracefully returns EMAIL_FAILED on provider error');
+  } else {
+    fail++;
+    console.error('  FAIL  Expected EMAIL_FAILED with Domain not verified but got ' + JSON.stringify(failedResult));
+  }
+
+  console.log(`\nResults: ${pass} PASSED, ${fail} FAILED`);
+  if (fail > 0) process.exit(1);
+})();

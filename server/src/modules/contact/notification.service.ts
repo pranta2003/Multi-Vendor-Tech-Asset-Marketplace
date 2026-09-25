@@ -147,3 +147,4 @@ export async function sendTicketNotifications(payload: TicketNotificationPayload
     'Support ticket recorded in database. Notification queued (no external email provider API key configured in env).',
   );
 }
+
