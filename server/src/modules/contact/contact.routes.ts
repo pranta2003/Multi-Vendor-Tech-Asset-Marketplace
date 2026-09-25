@@ -61,6 +61,23 @@ router.post(
 
 /**
  * @openapi
+ * /contact/diagnostic:
+ *   get:
+ *     tags: [Support]
+ *     summary: Inspect contact notification pipeline diagnostic status
+ *     description: Returns operational readiness of the support email configuration without exposing secrets.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Diagnostic status retrieved.
+ */
+router.get(
+  '/diagnostic',
+  asyncHandler(contactController.getDiagnostic),
+);
+
+/**
+ * @openapi
  * /contact:
  *   get:
  *     tags: [Support]

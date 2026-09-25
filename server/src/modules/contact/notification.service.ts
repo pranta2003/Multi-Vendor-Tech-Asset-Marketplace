@@ -280,14 +280,12 @@ export async function sendTicketNotifications(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${resendApiKey}`,
+        'User-Agent': 'AssetHub-Marketplace/1.0',
       },
       body: JSON.stringify({
         from: emailFrom,
-        to: destinationEmail,
+        to: [destinationEmail],
         reply_to: email,
-        headers: {
-          'Reply-To': email,
-        },
         subject,
         html,
         text,

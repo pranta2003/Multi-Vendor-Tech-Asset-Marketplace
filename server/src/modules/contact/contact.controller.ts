@@ -43,3 +43,61 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
   );
   sendSuccess(res, updated, 'Support ticket status updated', 200);
 };
+
+export const getDiagnostic = async (_req: Request, res: Response): Promise<void> => {
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  const supportEmail =
+    process.env.SUPPORT_EMAIL?.trim() ||
+    process.env.SUPPORT_OWNER_EMAIL?.trim() ||
+    'prantakumerpandit@gmail.com';
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    process.env.SUPPORT_EMAIL_FROM?.trim() ||
+    'AssetHub Support <onboarding@resend.dev>';
+
+  let resendApiKeyStatus: 'PRESENT' | 'MISSING' | 'EMPTY' | 'INVALID_FORMAT';
+  if (!resendApiKey) {
+    resendApiKeyStatus = 'MISSING';
+  } else if (resendApiKey.length === 0) {
+    resendApiKeyStatus = 'EMPTY';
+  } else if (!resendApiKey.startsWith('re_') || resendApiKey.length < 10) {
+    resendApiKeyStatus = 'INVALID_FORMAT';
+  } else {
+    resendApiKeyStatus = 'PRESENT';
+  }
+
+  let resendApiVerification: { ok: boolean; status?: number; error?: string } | null = null;
+  if (resendApiKeyStatus === 'PRESENT') {
+    try {
+      const probe = await fetch('https://api.resend.com/api-keys', {
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'User-Agent': 'AssetHub-Marketplace/1.0',
+        },
+      });
+      resendApiVerification = { ok: probe.ok, status: probe.status };
+      if (!probe.ok) {
+        const errBody = await probe.json().catch(() => ({}));
+        resendApiVerification.error =
+          (errBody as any)?.message || `Resend responded with HTTP ${probe.status}`;
+      }
+    } catch (err: any) {
+      resendApiVerification = { ok: false, error: err?.message || String(err) };
+    }
+  }
+
+  sendSuccess(
+    res,
+    {
+      resendApiKeyStatus,
+      configuredSupportEmail: supportEmail,
+      configuredFromEmail: fromEmail,
+      resendApiVerification,
+      runtimeNodeEnv: process.env.NODE_ENV,
+      serverUptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    },
+    'Contact notification diagnostic status',
+    200,
+  );
+};
