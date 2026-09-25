@@ -135,6 +135,7 @@ export async function createSupportTicket(
   logger.info({ event: 'TICKET_CREATED', ticketNumber: ticket.ticketNumber, id: ticket.id }, 'Support ticket created');
 
   // Await email dispatch so Vercel Serverless runtime does not freeze before HTTP completes
+  let emailStatusNote = '';
   try {
     const notifyResult = await sendTicketNotifications({
       ticketNumber: ticket.ticketNumber,
@@ -147,12 +148,38 @@ export async function createSupportTicket(
       message: ticket.message,
       createdAt: ticket.createdAt,
     });
-    logger.info({ ticketNumber: ticket.ticketNumber, emailStatus: notifyResult.status }, 'Email dispatch processing complete');
+
+    if (notifyResult.status === 'EMAIL_SENT') {
+      emailStatusNote = `[Notification: EMAIL_SENT - ID: ${notifyResult.id || 'N/A'}]`;
+    } else if (notifyResult.status === 'SKIPPED_NO_API_KEY') {
+      emailStatusNote = `[Notification: SKIPPED_NO_API_KEY - RESEND_API_KEY is not set in runtime environment]`;
+    } else {
+      emailStatusNote = `[Notification: EMAIL_FAILED - ${notifyResult.error || 'Provider rejected request'}]`;
+    }
+
+    logger.info(
+      { ticketNumber: ticket.ticketNumber, emailStatus: notifyResult.status, note: emailStatusNote },
+      'Email dispatch processing complete',
+    );
   } catch (err: any) {
+    emailStatusNote = `[Notification: EMAIL_FAILED - Unexpected error: ${err?.message || err}]`;
     logger.error(
       { event: 'EMAIL_FAILED', ticketNumber: ticket.ticketNumber, error: err?.message || err },
       'Unexpected error in ticket notification handler (ticket preserved in database)',
     );
+  }
+
+  // Update ticket with email dispatch status in PostgreSQL so admins and diagnostics can view it
+  if (emailStatusNote) {
+    try {
+      const updated = await prisma.supportTicket.update({
+        where: { id: ticket.id },
+        data: { adminNotes: emailStatusNote },
+      });
+      return updated;
+    } catch {
+      // Non-fatal fallback: return ticket as created
+    }
   }
 
   return ticket;
