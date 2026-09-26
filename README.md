@@ -370,6 +370,7 @@ Centralized observability
 Advanced admin reporting
 Scalable object storage
 <div align="center">
+  
 ##⭐ Like the Project?
 
 If you found AssetHub useful or interesting, consider giving the repository a star.
@@ -381,6 +382,5 @@ AssetHub — Multi-Vendor Tech Asset Marketplace
 
 © 2026 Pranta Kumer Pandit. All rights reserved.
 
-</div> ```
+</div> 
 
-This is the version I'd actually use. It is far shorter, but someone landing on the repo immediately sees Live Demo → Backend → Features → Stack → Architecture → Setup → Engineering decisions. The deeper technical details can stay in the code itself instead of turning the README into a technical manual.
