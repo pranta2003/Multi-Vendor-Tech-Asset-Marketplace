@@ -144,41 +144,6 @@ The production deployment uses two Vercel projects from the same repository.
                          └──────────────────────────┘
 ```
 
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite 6 + TypeScript + Tailwind CSS + Zustand |
-| Backend | Node.js 20 + Express 4 + TypeScript |
-| Database | PostgreSQL 16 + Prisma ORM 5 |
-| Auth | JWT access tokens + rotating refresh tokens in HttpOnly cookies + Argon2id |
-| Payments | Stripe (webhooks) · SSLCommerz (IPN) |
-| API docs | Swagger UI / OpenAPI 3.0.3 |
-| Infra | Docker multi-stage builds · Docker Compose · nginx |
-
-Deliberately **not** Next.js — this is a client-rendered SPA talking to a standalone REST API, so
-the two halves can be scaled, deployed, and reasoned about independently.
-
----
-
-## Architecture
-
-```
-                    ┌──────────────────────────────────────────┐
-  Browser  ─────────►  web  (nginx :80)                        │
-                    │    • serves the built SPA                │
-                    │    • reverse-proxies /api ──────────┐    │
-                    └─────────────────────────────────────┼────┘
-                                                          │  same origin
-                    ┌─────────────────────────────────────▼────┐
-                    │  api  (Express :5000)  — not published    │
-                    │    routes → controllers → services → db  │
-                    └─────────────────────────────────────┬────┘
-                                                          │
-                    ┌─────────────────────────────────────▼────┐
-                    │  postgres :5432        — not published    │
-                    └──────────────────────────────────────────┘
-```
 
 **Only the `web` container publishes a port.** The API and database are reachable solely on the
 private Docker network. Two consequences worth stating explicitly:
