@@ -143,9 +143,11 @@ The production deployment uses two Vercel projects from the same repository.
                          │        Prisma ORM        │
                          └──────────────────────────┘
 ```
+
 ##Local / Docker Architecture
 
 The repository also provides a Dockerized production-style architecture:
+```
 
                          ┌──────────────────────────────┐
                          │        Browser               │
@@ -172,8 +174,9 @@ The repository also provides a Dockerized production-style architecture:
                          ┌──────────────────────────────┐
                          │       PostgreSQL :5432       │
                          └──────────────────────────────┘
+```
 
-##🔐 Authentication
+## 🔐 Authentication
 
 AssetHub supports both traditional and social authentication.
 
@@ -197,7 +200,7 @@ AssetHub JWT Session
 
 Authorization is enforced server-side through role-based access control.
 
-##💳 Payment & Fulfilment
+## 💳 Payment & Fulfilment
 
 The platform supports:
 
@@ -220,7 +223,7 @@ Digital Library
 
 This prevents an unverified browser redirect from being treated as proof of payment.
 
-##🎫 Customer Support
+##  🎫 Customer Support
 
 AssetHub includes a dedicated support ticket system.
 
@@ -238,7 +241,7 @@ Support Inbox
 
 Support emails contain the submitted customer and ticket information, with the customer's email configured as Reply-To.
 
-##🧱 Backend Architecture
+## 🧱 Backend Architecture
 
 The backend follows a layered architecture:
 
@@ -284,7 +287,7 @@ Then run:
 
 npm run dev:server
 npm run dev:client
-##🔑 Environment Variables
+## 🔑 Environment Variables
 
 Backend configuration is validated at startup.
 
@@ -309,7 +312,7 @@ Never expose backend secrets through VITE_* variables or commit .env files.
 
 See .env.example for the complete configuration.
 
-##🧪 Verification
+## 🧪 Verification
 
 The repository includes automated validation for:
 
@@ -321,7 +324,7 @@ python scripts/validate-infra.py
 
 GitHub Actions runs the relevant checks before changes are merged into main.
 
-##📁 Repository Structure
+## 📁 Repository Structure
 .
 ├── client/                 # React + Vite frontend
 ├── server/                 # Express + TypeScript backend
@@ -339,7 +342,7 @@ GitHub Actions runs the relevant checks before changes are merged into main.
 ├── .env.example
 ├── package.json
 └── README.md
-##🧠 Engineering Focus
+## 🧠 Engineering Focus
 
 AssetHub was built to demonstrate practical production-oriented engineering rather than only feature implementation.
 
@@ -357,7 +360,7 @@ Dockerized infrastructure
 CI automation
 Independent frontend/backend deployment
 
-##🧭 Future Improvements
+## 🧭 Future Improvements
 
 Potential future improvements include:
 
@@ -371,7 +374,7 @@ Advanced admin reporting
 Scalable object storage
 <div align="center">
   
-##⭐ Like the Project?
+## ⭐ Like the Project?
 
 If you found AssetHub useful or interesting, consider giving the repository a star.
 
