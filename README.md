@@ -347,14 +347,14 @@ Independent frontend/backend deployment
 
 Potential future improvements include:
 
-Redis-backed distributed rate limiting
+**Redis-backed distributed rate limiting
 Background job processing
 Advanced vendor analytics
 Richer marketplace search
 Recommendation systems
 Centralized observability
 Advanced admin reporting
-Scalable object storage
+Scalable object storage**
 ---
 ## 🌐 Live Project
 
@@ -363,12 +363,6 @@ Scalable object storage
 | 🛍️ **Frontend / Marketplace** | [Open AssetHub](https://multi-vendor-tech-asset-marketplace-ashen.vercel.app) |
 | ⚙️ **Backend API** | [Open Backend API](https://multi-vendor-tech-asset-marketplace.vercel.app) |
 | ❤️ **API Health Check** | [Check API Status](https://multi-vendor-tech-asset-marketplace.vercel.app/api/v1/health) |
-
-> **AssetHub** is a full-stack multi-vendor marketplace for digital technology assets such as UI kits, code templates, mobile templates, DevOps resources, and courses.
-
-The platform provides customers with a complete marketplace experience — from authentication and product discovery to cart, checkout, payment verification, digital fulfilment, order history, account management, and customer support.
-
-The repository contains both the **React frontend** and the **Express/TypeScript backend** in a single monorepo while keeping the two applications independently deployable.
 
 ---
 <div align="center">
