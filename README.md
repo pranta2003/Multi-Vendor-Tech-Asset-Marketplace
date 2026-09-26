@@ -1,8 +1,7 @@
 <div align="center">
 #                                                    AssetHub — Multi-Vendor Tech Asset Marketplace
-</div>
+  
 
-<div align="center">
 
 ### A production-oriented full-stack marketplace for digital technology assets.
 
