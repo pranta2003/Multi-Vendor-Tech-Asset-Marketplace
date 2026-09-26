@@ -347,14 +347,14 @@ Independent frontend/backend deployment
 
 Potential future improvements include:
 
-**Redis-backed distributed rate limiting
+Redis-backed distributed rate limiting
 Background job processing
 Advanced vendor analytics
 Richer marketplace search
 Recommendation systems
 Centralized observability
 Advanced admin reporting
-Scalable object storage**
+Scalable object storage
 ---
 ## 🌐 Live Project
 
