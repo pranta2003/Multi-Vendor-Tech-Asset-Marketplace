@@ -9,10 +9,6 @@
 [![API Health](https://img.shields.io/badge/API%20Health-Operational-22C55E?style=for-the-badge)](https://multi-vendor-tech-asset-marketplace.vercel.app/api/v1/health)
 [![CI](https://github.com/pranta2003/Multi-Vendor-Tech-Asset-Marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/pranta2003/Multi-Vendor-Tech-Asset-Marketplace/actions/workflows/ci.yml)
 
-**Frontend:** React + Vite + TypeScript  
-**Backend:** Node.js + Express + TypeScript  
-**Database:** PostgreSQL + Prisma  
-**Payments:** Stripe + SSLCommerz
 
 </div>
 
