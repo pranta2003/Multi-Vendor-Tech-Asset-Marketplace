@@ -1,4 +1,6 @@
+<div align="center">
 #                                                    AssetHub — Multi-Vendor Tech Asset Marketplace
+</div>
 
 <div align="center">
 
@@ -325,6 +327,7 @@ python scripts/validate-infra.py
 GitHub Actions runs the relevant checks before changes are merged into main.
 
 ## 📁 Repository Structure
+```
 .
 ├── client/                 # React + Vite frontend
 ├── server/                 # Express + TypeScript backend
@@ -342,6 +345,7 @@ GitHub Actions runs the relevant checks before changes are merged into main.
 ├── .env.example
 ├── package.json
 └── README.md
+```
 ## 🧠 Engineering Focus
 
 AssetHub was built to demonstrate practical production-oriented engineering rather than only feature implementation.
