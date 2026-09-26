@@ -1,9 +1,8 @@
 <div align="center">
-#                                                    AssetHub — Multi-Vendor Tech Asset Marketplace
-  
 
+<h1>AssetHub — Multi-Vendor Tech Asset Marketplace</h1>
 
-### A production-oriented full-stack marketplace for digital technology assets.
+<h3>A production-oriented full-stack marketplace for digital technology assets.</h3>
 
 [![Live Frontend](https://img.shields.io/badge/Live%20Frontend-Visit%20AssetHub-5B5FEF?style=for-the-badge)](https://multi-vendor-tech-asset-marketplace-ashen.vercel.app)
 [![Backend API](https://img.shields.io/badge/Backend%20API-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://multi-vendor-tech-asset-marketplace.vercel.app)
