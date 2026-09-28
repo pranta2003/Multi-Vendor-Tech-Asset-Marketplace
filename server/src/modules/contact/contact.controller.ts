@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { prisma } from '../../config/prisma';
 import { sendSuccess } from '../../utils/ApiResponse';
 import { UnauthorizedError } from '../../utils/ApiError';
 import * as contactService from './contact.service';
@@ -44,7 +45,7 @@ export const updateStatus = async (req: Request, res: Response): Promise<void> =
   sendSuccess(res, updated, 'Support ticket status updated', 200);
 };
 
-export const getDiagnostic = async (_req: Request, res: Response): Promise<void> => {
+export const getDiagnostic = async (req: Request, res: Response): Promise<void> => {
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
   const supportEmail =
     process.env.SUPPORT_EMAIL?.trim() ||
@@ -66,23 +67,111 @@ export const getDiagnostic = async (_req: Request, res: Response): Promise<void>
     resendApiKeyStatus = 'PRESENT';
   }
 
-  let resendApiVerification: { ok: boolean; status?: number; error?: string } | null = null;
-  if (resendApiKeyStatus === 'PRESENT') {
+  // Look up recent support tickets from PostgreSQL to trace real production submissions
+  let recentTickets: any[] = [];
+  try {
+    await contactService.ensureSupportSchema();
+    const queryTicketNumber = (req.query.ticketNumber as string)?.trim();
+    if (queryTicketNumber) {
+      const single = await prisma.supportTicket.findUnique({
+        where: { ticketNumber: queryTicketNumber },
+        select: {
+          id: true,
+          ticketNumber: true,
+          email: true,
+          subject: true,
+          inquiryType: true,
+          status: true,
+          adminNotes: true,
+          createdAt: true,
+        },
+      });
+      if (single) recentTickets = [single];
+    } else {
+      recentTickets = await prisma.supportTicket.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          ticketNumber: true,
+          email: true,
+          subject: true,
+          inquiryType: true,
+          status: true,
+          adminNotes: true,
+          createdAt: true,
+        },
+      });
+    }
+  } catch (err: any) {
+    recentTickets = [{ error: err?.message || String(err) }];
+  }
+
+  // Extract Resend email ID from target or recent ticket's adminNotes
+  let targetEmailId = (req.query.emailId as string)?.trim();
+  if (!targetEmailId && recentTickets.length > 0) {
+    for (const t of recentTickets) {
+      if (t.adminNotes) {
+        const match = t.adminNotes.match(/ID:\s*([a-zA-Z0-9_-]+)/);
+        if (match) {
+          targetEmailId = match[1];
+          break;
+        }
+      }
+    }
+  }
+
+  // Query Resend API for email delivery status if an email ID is identified
+  let resendEmailDetails: any = null;
+  if (targetEmailId && resendApiKeyStatus === 'PRESENT') {
     try {
-      const probe = await fetch('https://api.resend.com/api-keys', {
+      const emailRes = await fetch(`https://api.resend.com/emails/${targetEmailId}`, {
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'User-Agent': 'AssetHub-Marketplace/1.0',
         },
       });
-      resendApiVerification = { ok: probe.ok, status: probe.status };
-      if (!probe.ok) {
-        const errBody = await probe.json().catch(() => ({}));
-        resendApiVerification.error =
-          (errBody as any)?.message || `Resend responded with HTTP ${probe.status}`;
+      if (emailRes.ok) {
+        resendEmailDetails = await emailRes.json();
+      } else {
+        const errBody = await emailRes.json().catch(() => ({}));
+        resendEmailDetails = {
+          httpStatus: emailRes.status,
+          error: (errBody as any)?.message || `HTTP ${emailRes.status}`,
+        };
       }
     } catch (err: any) {
-      resendApiVerification = { ok: false, error: err?.message || String(err) };
+      resendEmailDetails = { error: err?.message || String(err) };
+    }
+  }
+
+  // Optional active send probe
+  let sendProbeResult: any = null;
+  if (req.query.probe === 'true' && resendApiKeyStatus === 'PRESENT') {
+    try {
+      const probeRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${resendApiKey}`,
+          'User-Agent': 'AssetHub-Marketplace/1.0',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [supportEmail],
+          subject: 'AssetHub Production Support Email Delivery Probe',
+          text: `This is an automated production delivery diagnostic test sent to ${supportEmail} at ${new Date().toISOString()}.`,
+        }),
+      });
+
+      const body = await probeRes.json().catch(() => ({}));
+      sendProbeResult = {
+        httpStatus: probeRes.status,
+        ok: probeRes.ok,
+        body,
+      };
+    } catch (err: any) {
+      sendProbeResult = { error: err?.message || String(err) };
     }
   }
 
@@ -92,7 +181,10 @@ export const getDiagnostic = async (_req: Request, res: Response): Promise<void>
       resendApiKeyStatus,
       configuredSupportEmail: supportEmail,
       configuredFromEmail: fromEmail,
-      resendApiVerification,
+      recentTickets,
+      targetEmailId,
+      resendEmailDetails,
+      sendProbeResult,
       runtimeNodeEnv: process.env.NODE_ENV,
       serverUptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
